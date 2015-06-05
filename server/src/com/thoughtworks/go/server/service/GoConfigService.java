@@ -81,6 +81,7 @@ public class GoConfigService implements Initializer {
     private ConfigRepository configRepository;
     private ConfigCache configCache;
     // provides part of configuration that must be polled.
+    // when configuration is viewed through this then there is revision of configuration
     private DynamicConfigService dynamicConfig;
 
     private Cloner cloner = new Cloner();
@@ -135,35 +136,7 @@ public class GoConfigService implements Initializer {
         }
     }
 
-    public ConfigForEdit<PipelineConfig> loadForEdit(String pipelineName, Username username, HttpLocalizedOperationResult result) {
-        if (!canEditPipeline(pipelineName, username, result)) {
-            return null;
-        }
-        GoConfigHolder configHolder = getConfigHolder();
-        configHolder = cloner.deepClone(configHolder);
-        PipelineConfig config = configHolder.configForEdit.pipelineConfigByName(new CaseInsensitiveString(pipelineName));
-        return new ConfigForEdit<PipelineConfig>(config, configHolder);
-    }
-
-    private boolean canEditPipeline(String pipelineName, Username username, LocalizedOperationResult result) {
-        if (!doesPipelineExist(pipelineName, result)) {
-            return false;
-        }
-        String groupName = findGroupNameByPipeline(new CaseInsensitiveString(pipelineName));
-        if (!isUserAdminOfGroup(username.getUsername(), groupName)) {
-            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_EDIT_PIPELINE", pipelineName), HealthStateType.unauthorisedForPipeline(pipelineName));
-            return false;
-        }
-        return true;
-    }
-
-    private boolean doesPipelineExist(String pipelineName, LocalizedOperationResult result) {
-        if (!getCurrentConfig().hasPipelineNamed(new CaseInsensitiveString(pipelineName))) {
-            result.notFound(LocalizedMessage.string("PIPELINE_NOT_FOUND", pipelineName), HealthStateType.general(HealthStateScope.forPipeline(pipelineName)));
-            return false;
-        }
-        return true;
-    }
+    // Good static configuration
 
     public GoMailSender mailSender() {
         return GoSmtpMailSender.createSender(currentCruiseConfig().mailHost());
@@ -173,24 +146,8 @@ public class GoConfigService implements Initializer {
         return getCurrentConfig().agents();
     }
 
-    public CruiseConfig currentCruiseConfig() {
-        return getCurrentConfig();
-    }
-
     public int getNumberOfApprovedRemoteAgents() {
         return agents().countApprovedRemoteAgents();
-    }
-
-    public CruiseConfig getCurrentConfig() {
-        return cruiseConfig();
-    }
-
-    public CruiseConfig getConfigForEditing() {
-        return goConfigFileDao.loadForEditing();
-    }
-
-    private CruiseConfig cruiseConfig() {
-        return goConfigFileDao.load();
     }
 
     public void populateLicenseAndConfigValidityInfo(Map<String, Object> model) {
@@ -207,34 +164,6 @@ public class GoConfigService implements Initializer {
         return agents().getAgentByUuid(uuid);
     }
 
-    public boolean isPipelineEmpty() {
-        return getCurrentConfig().hasPipeline();
-    }
-
-    public StageConfig stageConfigNamed(String pipelineName, String stageName) {
-        return getCurrentConfig().stageConfigByName(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(stageName));
-    }
-
-    public boolean hasPipelineNamed(final CaseInsensitiveString pipelineName) {
-        return getCurrentConfig().hasPipelineNamed(pipelineName);
-    }
-
-    public PipelineConfig pipelineConfigNamed(final CaseInsensitiveString name) {
-        return getCurrentConfig().pipelineConfigByName(name);
-    }
-
-    public boolean stageHasTests(String pipelineName, String stageName) {
-        return stageConfigNamed(pipelineName, stageName).hasTests();
-    }
-
-    public boolean stageExists(String pipelineName, String stageName) {
-        try {
-            stageConfigNamed(pipelineName, stageName);
-            return true;
-        } catch (StageNotFoundException e) {
-            return false;
-        }
-    }
 
     public String fileLocation() {
         return goConfigFileDao.fileLocation();
@@ -246,53 +175,438 @@ public class GoConfigService implements Initializer {
         return new File(s);
     }
 
-    public boolean hasStageConfigNamed(String pipelineName, String stageName) {
-        return getCurrentConfig().hasStageConfigNamed(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(stageName), true);
-    }
 
     public void addAgent(AgentConfig agentConfig) {
         goConfigFileDao.addAgent(agentConfig);
     }
 
-    public ConfigSaveState updateConfig(UpdateConfigCommand command) {
-        return goConfigFileDao.updateConfig(command);
-    }
-
-    public long getUnresponsiveJobTerminationThreshold(JobIdentifier identifier) {
-        JobConfig jobConfig = getJob(identifier);
-        if (jobConfig == null) {
-            return toMillis(Long.parseLong(serverConfig().getJobTimeout()));
-        }
-        String timeout = jobConfig.getTimeout();
-        return timeout != null ? toMillis(Long.parseLong(timeout)) : toMillis(Long.parseLong(serverConfig().getJobTimeout()));
-    }
-
-    private JobConfig getJob(JobIdentifier identifier) {
-        JobConfig jobConfig = null;
-        try {
-            jobConfig = cruiseConfig().findJob(identifier.getPipelineName(), identifier.getStageName(), identifier.getBuildName());
-        } catch (Exception e) {
-        }
-        return jobConfig;
-    }
 
     private long toMillis(final long minutes) {
         return minutes * 60 * 1000;
     }
 
-    public boolean canCancelJobIfHung(JobIdentifier jobIdentifier) {
-        JobConfig jobConfig = getJob(jobIdentifier);
-        if (jobConfig == null) {
+
+
+    public ConfigSaveState updateServerConfig(final MailHost mailHost, final LdapConfig ldapConfig, final PasswordFileConfig passwordFileConfig, final boolean shouldAllowAutoLogin,
+                                              final String md5, final String artifactsDir, final Double purgeStart, final Double purgeUpto, final String jobTimeout,
+                                              final String siteUrl, final String secureSiteUrl, final String taskRepositoryLocation) {
+        final List<ConfigSaveState> result = new ArrayList<ConfigSaveState>();
+        result.add(updateConfig(
+                new GoConfigFileDao.NoOverwriteCompositeConfigCommand(md5,
+                        goConfigFileDao.mailHostUpdater(mailHost),
+                        securityUpdater(ldapConfig, passwordFileConfig, shouldAllowAutoLogin),
+                        serverConfigUpdater(artifactsDir, purgeStart, purgeUpto, jobTimeout, siteUrl, secureSiteUrl, taskRepositoryLocation))));
+        //should not reach here with empty result
+        return result.get(0);
+    }
+
+    private UpdateConfigCommand serverConfigUpdater(final String artifactsDir, final Double purgeStart, final Double purgeUpto, final String jobTimeout, final String siteUrl,
+                                                    final String secureSiteUrl, final String taskRepositoryLocation) {
+        return new UpdateConfigCommand() {
+            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
+                ServerConfig server = cruiseConfig.server();
+                server.setArtifactsDir(artifactsDir);
+                server.setPurgeLimits(purgeStart, purgeUpto);
+                server.setJobTimeout(jobTimeout);
+                server.setSiteUrl(siteUrl);
+                server.setSecureSiteUrl(secureSiteUrl);
+                server.setCommandRepositoryLocation(taskRepositoryLocation);
+                return cruiseConfig;
+            }
+        };
+    }
+
+    private UpdateConfigCommand securityUpdater(final LdapConfig ldapConfig, final PasswordFileConfig passwordFileConfig, final boolean shouldAllowAutoLogin) {
+        return new UpdateConfigCommand() {
+            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
+                SecurityConfig securityConfig = cruiseConfig.server().security();
+                securityConfig.modifyLdap(ldapConfig);
+                securityConfig.modifyPasswordFile(passwordFileConfig);
+                securityConfig.modifyAllowOnlyKnownUsers(!shouldAllowAutoLogin);
+                return cruiseConfig;
+            }
+        };
+    }
+
+
+
+    public void updateAgentResources(String uuid, Resources newResources) {
+        goConfigFileDao.updateAgentResources(uuid, newResources);
+    }
+
+    public void updateAgentIpByUuid(String uuid, String ipAddress, String userName) {
+        goConfigFileDao.updateAgentIp(uuid, ipAddress, userName);
+    }
+
+    public void updateAgentAttributes(String uuid, String userName, String hostname, String resources) {
+        goConfigFileDao.updateAgentAttributes(uuid, userName, hostname, resources);
+    }
+
+    public void updateAgentApprovalStatus(String uuid, Boolean isDenied) {
+        goConfigFileDao.updateAgentApprovalStatus(uuid, isDenied);
+    }
+
+    public void register(ConfigChangedListener listener) {
+        goConfigFileDao.registerListener(listener);
+    }
+
+    private List<CaseInsensitiveString> getAuthorizedUsers(AdminsConfig authorizedAdmins) {
+        ArrayList<CaseInsensitiveString> users = new ArrayList<CaseInsensitiveString>();
+        for (Admin admin : authorizedAdmins) {
+            if (admin instanceof AdminRole) {
+                addRoleUsers(users, admin.getName());
+            } else {
+                users.add(admin.getName());
+            }
+        }
+        return users;
+    }
+
+    private void addRoleUsers(List<CaseInsensitiveString> users, final CaseInsensitiveString roleName) {
+        Role role = security().getRoles().findByName(roleName);
+        if (role != null) {
+            for (RoleUser roleUser : role.getUsers()) {
+                users.add(roleUser.getName());
+            }
+        }
+    }
+
+    public GoMailSender getMailSender() {
+        return GoSmtpMailSender.createSender(serverConfig().mailHost());
+    }
+    public boolean isSmtpEnabled() {
+        return currentCruiseConfig().isSmtpEnabled();
+    }
+
+
+    public void populateAdminModel(Map<String, String> model) {
+        model.put("location", fileLocation());
+        XmlPartialSaver saver = fileSaver(false);
+        model.put("content", saver.asXml());
+        model.put("md5", saver.getMd5());
+    }
+
+    public MailHost getMailHost() {
+        return serverConfig().mailHost();
+    }
+
+    public boolean hasAgent(String uuid) {
+        return agents().hasAgent(uuid);
+    }
+
+
+    public boolean isAdministrator(String username) {
+        return getCurrentConfig().isAdministrator(username);
+    }
+
+
+
+    public String adminEmail() {
+        return getCurrentConfig().adminEmail();
+    }
+
+    public void disableAgents(boolean disabled, AgentInstance... instances) {
+        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
+        for (AgentInstance agentInstance : instances) {
+            String uuid = agentInstance.getUuid();
+
+            if (hasAgent(uuid)) {
+                command.addCommand(GoConfigFileDao.updateApprovalStatus(uuid, disabled));
+            } else {
+                AgentConfig agentConfig = agentInstance.agentConfig();
+                agentConfig.disable(disabled);
+                command.addCommand(GoConfigFileDao.createAddAgentCommand(agentConfig));
+            }
+        }
+        updateConfig(command);
+    }
+
+    public void deleteAgents(AgentInstance... agentInstances) {
+        goConfigFileDao.deleteAgents(agentInstances);
+    }
+
+    public void approvePendingAgent(AgentInstance agentInstance) {
+        agentInstance.enable();
+        if (hasAgent(agentInstance.getUuid())) {
+            LOGGER.warn("Registered agent with the same uuid [" + agentInstance + "] already approved.");
+        } else {
+            this.addAgent(agentInstance.agentConfig());
+        }
+    }
+
+
+    public void modifyResources(AgentInstance[] instances, List<TriStateSelection> selections) {
+        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
+        for (AgentInstance agentInstance : instances) {
+            String uuid = agentInstance.getUuid();
+            if (hasAgent(uuid)) {
+                for (TriStateSelection selection : selections) {
+                    command.addCommand(new GoConfigFileDao.ModifyResourcesCommand(uuid, new Resource(selection.getValue()), selection.getAction()));
+                }
+            }
+        }
+        updateConfig(command);
+    }
+
+    public GoConfigFileDao.CompositeConfigCommand modifyRolesCommand(List<String> users, List<TriStateSelection> roleSelections) {
+        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
+        for (String user : users) {
+            for (TriStateSelection roleSelection : roleSelections) {
+                command.addCommand(new GoConfigFileDao.ModifyRoleCommand(user, roleSelection));
+            }
+        }
+        return command;
+    }
+
+    public UpdateConfigCommand modifyAdminPrivilegesCommand(List<String> users, TriStateSelection adminPrivilege) {
+        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
+        for (String user : users) {
+            command.addCommand(new GoConfigFileDao.ModifyAdminPrivilegeCommand(user, adminPrivilege));
+        }
+        return command;
+    }
+
+
+    public Set<Resource> getAllResources() {
+        return getCurrentConfig().getAllResources();
+    }
+
+    public List<String> getResourceList() {
+        ArrayList<String> resources = new ArrayList<String>();
+        for (Resource res : getCurrentConfig().getAllResources()) {
+            resources.add(res.getName());
+        }
+        return resources;
+    }
+
+
+    public GoConfigValidity checkConfigFileValid() {
+        return goConfigFileDao.checkConfigFileValid();
+    }
+
+    public boolean isSecurityEnabled() {
+        return getCurrentConfig().isSecurityEnabled();
+    }
+
+    public SecurityConfig security() {
+        return serverConfig().security();
+    }
+
+    public ServerConfig serverConfig() {
+        return getCurrentConfig().server();
+    }
+
+
+    public boolean anonymousAccess() {
+        return serverConfig().anonymousAccess();
+    }
+
+
+    public String configFileMd5() {
+        return goConfigFileDao.md5OfConfigFile();
+    }
+
+
+    public List<Role> rolesForUser(final CaseInsensitiveString user) {
+        return security().getRoles().memberRoles(new AdminUser(user));
+    }
+
+    public boolean isGroupAdministrator(final CaseInsensitiveString userName) {
+        return getCurrentConfig().isGroupAdministrator(userName);
+    }
+
+
+
+    public XmlPartialSaver fileSaver(final boolean shouldUpgrade) {
+        return new XmlPartialFileSaver(shouldUpgrade, registry);
+    }
+
+    public boolean isOnlyKnownUserAllowedToLogin() {
+        return serverConfig().security().isAllowOnlyKnownUsersToLogin();
+    }
+
+    public boolean isLdapConfigured() {
+        return ldapConfig().isEnabled();
+    }
+
+    public boolean isPasswordFileConfigured() {
+        return passwordFileConfig().isEnabled();
+    }
+
+
+
+    public LdapConfig ldapConfig() {
+        return serverConfig().security().ldapConfig();
+    }
+
+    private PasswordFileConfig passwordFileConfig() {
+        return serverConfig().security().passwordFileConfig();
+    }
+
+    public ConfigSaveState updateEnvironment(final String named, final EnvironmentConfig newEnvDefinition, final String md5) {
+        return goConfigFileDao.updateConfig(new NoOverwriteUpdateConfigCommand() {
+            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
+                EnvironmentsConfig environments = cruiseConfig.getEnvironments();
+                EnvironmentConfig oldConfig = environments.named(new CaseInsensitiveString(named));
+                int index = environments.indexOf(oldConfig);
+                environments.remove(index);
+                environments.add(index, newEnvDefinition);
+                return cruiseConfig;
+            }
+
+            public String unmodifiedMd5() {
+                return md5;
+            }
+        });
+    }
+
+    public boolean isUserAdminOfGroup(final CaseInsensitiveString userName, String groupName) {
+        PipelineConfigs group = null;
+        if (groupName != null) {
+            group = getCurrentConfig().findGroup(groupName);
+        }
+        return isUserAdmin(new Username(userName)) || isUserAdminOfGroup(userName, group);
+    }
+
+    public boolean isUserAdminOfGroup(final CaseInsensitiveString userName, PipelineConfigs group) {
+        return group.isUserAnAdmin(userName, rolesForUser(userName));
+    }
+
+    public boolean isUserAdmin(Username username) {
+        return isAdministrator(CaseInsensitiveString.str(username.getUsername()));
+    }
+
+    private boolean isUserTemplateAdmin(Username username) {
+        return getCurrentConfig().getTemplates().canViewAndEditTemplate(username.getUsername());
+    }
+
+    public GoConfigRevision getConfigAtVersion(String version) {
+        GoConfigRevision goConfigRevision = null;
+        try {
+            goConfigRevision = configRepository.getRevision(version);
+        } catch (Exception e) {
+            LOGGER.info("[Go Config Service] Could not fetch cruise config xml at version=" + version, e);
+        }
+        return goConfigRevision;
+    }
+
+
+
+    private boolean isValidGroup(String groupName, CruiseConfig cruiseConfig, HttpLocalizedOperationResult result) {
+        if (!cruiseConfig.hasPipelineGroup(groupName)) {
+            result.notFound(LocalizedMessage.string("PIPELINE_GROUP_NOT_FOUND", groupName), HealthStateType.general(HealthStateScope.forGroup(groupName)));
             return false;
         }
-        String timeout = jobConfig.getTimeout();
-        if ("0".equals(timeout)) {
+        return true;
+    }
+
+    private boolean isAdminOfGroup(String toGroupName, Username username, HttpLocalizedOperationResult result) {
+        if (!isUserAdminOfGroup(username.getUsername(), toGroupName)) {
+            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_EDIT_GROUP", toGroupName), HealthStateType.unauthorised());
             return false;
         }
-        if (timeout == null && !"0".equals(serverConfig().getJobTimeout())) {
-            return true;
+        return true;
+    }
+
+    public boolean doesMd5Match(String md5) {
+        return configFileMd5().equals(md5);
+    }
+
+    public String getServerId() {
+        return serverConfig().getServerId();
+    }
+
+    public String configChangesFor(String laterMd5, String earlierMd5, LocalizedOperationResult result) {
+        try {
+            return configRepository.configChangesFor(laterMd5, earlierMd5);
+        } catch (IllegalArgumentException e) {
+            result.badRequest(LocalizedMessage.string("CONFIG_VERSION_NOT_FOUND"));
+        } catch (Exception e) {
+            result.internalServerError(LocalizedMessage.string("COULD_NOT_RETRIEVE_CONFIG_DIFF"));
         }
-        return timeout != null && !"0".equals(timeout);
+        return null;
+    }
+
+    public boolean isAuthorizedToEditTemplate(String templateName, Username username) {
+        return isUserAdmin(username) || getCurrentConfig().getTemplates().canUserEditTemplate(templateName, username.getUsername());
+    }
+
+    public boolean isAuthorizedToViewAndEditTemplates(Username username) {
+        return getCurrentConfig().getTemplates().canViewAndEditTemplate(username.getUsername());
+    }
+
+    public void updateUserPipelineSelections(String id, Long userId, CaseInsensitiveString pipelineToAdd) {
+        PipelineSelections currentSelections = findOrCreateCurrentPipelineSelectionsFor(id, userId);
+        if (!currentSelections.isBlacklist()) {
+            currentSelections.addPipelineToSelections(pipelineToAdd);
+            pipelineRepository.saveSelectedPipelines(currentSelections);
+        }
+    }
+
+    /////// above is good static conf
+
+    // TODO #1133 too big. Expose only parts of config which are static
+
+    public CruiseConfig currentCruiseConfig() {
+        return getCurrentConfig();
+    }
+
+    public CruiseConfig getCurrentConfig() {
+        return cruiseConfig();
+    }
+
+    private CruiseConfig cruiseConfig() {
+        return goConfigFileDao.load();
+    }
+
+
+    public GoConfigHolder getConfigHolder() {
+        return goConfigFileDao.loadConfigHolder();
+    }
+
+    public CruiseConfig loadCruiseConfigForEdit(Username username, HttpLocalizedOperationResult result) {
+        if (!isUserAdmin(username) && !isUserTemplateAdmin(username)) {
+            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_ADMINISTER"), HealthStateType.unauthorised());
+        }
+        return clonedConfigForEdit();
+    }
+
+    private CruiseConfig clonedConfigForEdit() {
+        return cloner.deepClone(getConfigForEditing());
+    }
+
+    public ConfigForEdit<PipelineConfigs> loadGroupForEditing(String groupName, Username username, HttpLocalizedOperationResult result) {
+        GoConfigHolder configForEdit = cloner.deepClone(getConfigHolder());
+        if (!isValidGroup(groupName, configForEdit.configForEdit, result)) {
+            return null;
+        }
+
+        if (!isAdminOfGroup(groupName, username, result)) {
+            return null;
+        }
+        PipelineConfigs config = cloner.deepClone(configForEdit.configForEdit.findGroup(groupName));
+        return new ConfigForEdit<PipelineConfigs>(config, configForEdit);
+    }
+
+
+    // TODO #1133 these are on boundry of sensibility if we try to model configuration as versioned.
+
+    public ConfigForEdit<PipelineConfig> loadForEdit(String pipelineName, Username username, HttpLocalizedOperationResult result) {
+        if (!canEditPipeline(pipelineName, username, result)) {
+            return null;
+        }
+        GoConfigHolder configHolder = getConfigHolder();
+        configHolder = cloner.deepClone(configHolder);
+        PipelineConfig config = configHolder.configForEdit.pipelineConfigByName(new CaseInsensitiveString(pipelineName));
+        return new ConfigForEdit<PipelineConfig>(config, configHolder);
+    }
+
+    public CruiseConfig getConfigForEditing() {
+        return goConfigFileDao.loadForEditing();
+    }
+
+    public ConfigSaveState updateConfig(UpdateConfigCommand command) {
+        return goConfigFileDao.updateConfig(command);
     }
 
     public ConfigUpdateResponse updateConfigFromUI(final UpdateConfigFromUI command, final String md5, Username username, final LocalizedOperationResult result) {
@@ -381,46 +695,6 @@ public class GoConfigService implements Initializer {
         goConfigFileDao.updateMailHost(mailHost);
     }
 
-    public ConfigSaveState updateServerConfig(final MailHost mailHost, final LdapConfig ldapConfig, final PasswordFileConfig passwordFileConfig, final boolean shouldAllowAutoLogin,
-                                              final String md5, final String artifactsDir, final Double purgeStart, final Double purgeUpto, final String jobTimeout,
-                                              final String siteUrl, final String secureSiteUrl, final String taskRepositoryLocation) {
-        final List<ConfigSaveState> result = new ArrayList<ConfigSaveState>();
-        result.add(updateConfig(
-                new GoConfigFileDao.NoOverwriteCompositeConfigCommand(md5,
-                        goConfigFileDao.mailHostUpdater(mailHost),
-                        securityUpdater(ldapConfig, passwordFileConfig, shouldAllowAutoLogin),
-                        serverConfigUpdater(artifactsDir, purgeStart, purgeUpto, jobTimeout, siteUrl, secureSiteUrl, taskRepositoryLocation))));
-        //should not reach here with empty result
-        return result.get(0);
-    }
-
-    private UpdateConfigCommand serverConfigUpdater(final String artifactsDir, final Double purgeStart, final Double purgeUpto, final String jobTimeout, final String siteUrl,
-                                                    final String secureSiteUrl, final String taskRepositoryLocation) {
-        return new UpdateConfigCommand() {
-            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-                ServerConfig server = cruiseConfig.server();
-                server.setArtifactsDir(artifactsDir);
-                server.setPurgeLimits(purgeStart, purgeUpto);
-                server.setJobTimeout(jobTimeout);
-                server.setSiteUrl(siteUrl);
-                server.setSecureSiteUrl(secureSiteUrl);
-                server.setCommandRepositoryLocation(taskRepositoryLocation);
-                return cruiseConfig;
-            }
-        };
-    }
-
-    private UpdateConfigCommand securityUpdater(final LdapConfig ldapConfig, final PasswordFileConfig passwordFileConfig, final boolean shouldAllowAutoLogin) {
-        return new UpdateConfigCommand() {
-            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-                SecurityConfig securityConfig = cruiseConfig.server().security();
-                securityConfig.modifyLdap(ldapConfig);
-                securityConfig.modifyPasswordFile(passwordFileConfig);
-                securityConfig.modifyAllowOnlyKnownUsers(!shouldAllowAutoLogin);
-                return cruiseConfig;
-            }
-        };
-    }
 
     public void addEnvironment(EnvironmentConfig environmentConfig) {
         goConfigFileDao.addEnvironment(environmentConfig);
@@ -430,25 +704,113 @@ public class GoConfigService implements Initializer {
         goConfigFileDao.addPipeline(pipeline, groupName);
     }
 
-    public void updateAgentResources(String uuid, Resources newResources) {
-        goConfigFileDao.updateAgentResources(uuid, newResources);
+
+    public List<String> allGroups() {
+        List<String> allGroup = new ArrayList<String>();
+        getCurrentConfig().groups(allGroup);
+        return allGroup;
     }
 
-    public void updateAgentIpByUuid(String uuid, String ipAddress, String userName) {
-        goConfigFileDao.updateAgentIp(uuid, ipAddress, userName);
+    public PipelineGroups groups() {
+        return getCurrentConfig().getGroups();
     }
 
-    public void updateAgentAttributes(String uuid, String userName, String hostname, String resources) {
-        goConfigFileDao.updateAgentAttributes(uuid, userName, hostname, resources);
+    public List<Task> tasksForJob(String pipelineName, String stageName, String jobName) {
+        return getCurrentConfig().tasksForJob(pipelineName, stageName, jobName);
     }
 
-    public void updateAgentApprovalStatus(String uuid, Boolean isDenied) {
-        goConfigFileDao.updateAgentApprovalStatus(uuid, isDenied);
+
+    public boolean isInFirstGroup(String pipelineName) {
+        return currentCruiseConfig().isInFirstGroup(new CaseInsensitiveString(pipelineName));
     }
 
-    public void register(ConfigChangedListener listener) {
-        goConfigFileDao.registerListener(listener);
+
+    // TODO #1133 these should be taken from dynamic configuration. They have versions.
+
+    private boolean canEditPipeline(String pipelineName, Username username, LocalizedOperationResult result) {
+        if (!doesPipelineExist(pipelineName, result)) {
+            return false;
+        }
+        String groupName = findGroupNameByPipeline(new CaseInsensitiveString(pipelineName));
+        if (!isUserAdminOfGroup(username.getUsername(), groupName)) {
+            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_EDIT_PIPELINE", pipelineName), HealthStateType.unauthorisedForPipeline(pipelineName));
+            return false;
+        }
+        return true;
     }
+
+    private boolean doesPipelineExist(String pipelineName, LocalizedOperationResult result) {
+        if (!getCurrentConfig().hasPipelineNamed(new CaseInsensitiveString(pipelineName))) {
+            result.notFound(LocalizedMessage.string("PIPELINE_NOT_FOUND", pipelineName), HealthStateType.general(HealthStateScope.forPipeline(pipelineName)));
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isPipelineEmpty() {
+        return getCurrentConfig().hasPipeline();
+    }
+
+    public StageConfig stageConfigNamed(String pipelineName, String stageName) {
+        return getCurrentConfig().stageConfigByName(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(stageName));
+    }
+
+    public boolean hasPipelineNamed(final CaseInsensitiveString pipelineName) {
+        return getCurrentConfig().hasPipelineNamed(pipelineName);
+    }
+
+    public PipelineConfig pipelineConfigNamed(final CaseInsensitiveString name) {
+        return getCurrentConfig().pipelineConfigByName(name);
+    }
+
+    public boolean stageHasTests(String pipelineName, String stageName) {
+        return stageConfigNamed(pipelineName, stageName).hasTests();
+    }
+
+    public boolean stageExists(String pipelineName, String stageName) {
+        try {
+            stageConfigNamed(pipelineName, stageName);
+            return true;
+        } catch (StageNotFoundException e) {
+            return false;
+        }
+    }
+
+    public boolean hasStageConfigNamed(String pipelineName, String stageName) {
+        return getCurrentConfig().hasStageConfigNamed(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(stageName), true);
+    }
+    public long getUnresponsiveJobTerminationThreshold(JobIdentifier identifier) {
+        JobConfig jobConfig = getJob(identifier);
+        if (jobConfig == null) {
+            return toMillis(Long.parseLong(serverConfig().getJobTimeout()));
+        }
+        String timeout = jobConfig.getTimeout();
+        return timeout != null ? toMillis(Long.parseLong(timeout)) : toMillis(Long.parseLong(serverConfig().getJobTimeout()));
+    }
+
+    private JobConfig getJob(JobIdentifier identifier) {
+        JobConfig jobConfig = null;
+        try {
+            jobConfig = cruiseConfig().findJob(identifier.getPipelineName(), identifier.getStageName(), identifier.getBuildName());
+        } catch (Exception e) {
+        }
+        return jobConfig;
+    }
+    public boolean canCancelJobIfHung(JobIdentifier jobIdentifier) {
+        JobConfig jobConfig = getJob(jobIdentifier);
+        if (jobConfig == null) {
+            return false;
+        }
+        String timeout = jobConfig.getTimeout();
+        if ("0".equals(timeout)) {
+            return false;
+        }
+        if (timeout == null && !"0".equals(serverConfig().getJobTimeout())) {
+            return true;
+        }
+        return timeout != null && !"0".equals(timeout);
+    }
+
 
     GoAcl readAclBy(String pipelineName, String stageName) {
         PipelineConfig pipelineConfig = pipelineConfigNamed(new CaseInsensitiveString(pipelineName));
@@ -458,52 +820,6 @@ public class GoConfigService implements Initializer {
         return new GoAcl(users);
     }
 
-    private List<CaseInsensitiveString> getAuthorizedUsers(AdminsConfig authorizedAdmins) {
-        ArrayList<CaseInsensitiveString> users = new ArrayList<CaseInsensitiveString>();
-        for (Admin admin : authorizedAdmins) {
-            if (admin instanceof AdminRole) {
-                addRoleUsers(users, admin.getName());
-            } else {
-                users.add(admin.getName());
-            }
-        }
-        return users;
-    }
-
-    private void addRoleUsers(List<CaseInsensitiveString> users, final CaseInsensitiveString roleName) {
-        Role role = security().getRoles().findByName(roleName);
-        if (role != null) {
-            for (RoleUser roleUser : role.getUsers()) {
-                users.add(roleUser.getName());
-            }
-        }
-    }
-
-    public GoMailSender getMailSender() {
-        return GoSmtpMailSender.createSender(serverConfig().mailHost());
-    }
-
-    public List<String> allGroups() {
-        List<String> allGroup = new ArrayList<String>();
-        getCurrentConfig().groups(allGroup);
-        return allGroup;
-    }
-
-	public PipelineGroups groups() {
-		return getCurrentConfig().getGroups();
-	}
-
-    public List<Task> tasksForJob(String pipelineName, String stageName, String jobName) {
-        return getCurrentConfig().tasksForJob(pipelineName, stageName, jobName);
-    }
-
-    public boolean isSmtpEnabled() {
-        return currentCruiseConfig().isSmtpEnabled();
-    }
-
-    public boolean isInFirstGroup(String pipelineName) {
-        return currentCruiseConfig().isInFirstGroup(new CaseInsensitiveString(pipelineName));
-    }
 
     public void accept(PiplineConfigVisitor visitor) {
         getCurrentConfig().accept(visitor);
@@ -515,21 +831,6 @@ public class GoConfigService implements Initializer {
 
     public String findGroupNameByPipeline(final CaseInsensitiveString pipelineName) {
         return getCurrentConfig().getGroups().findGroupNameByPipeline(pipelineName);
-    }
-
-    public void populateAdminModel(Map<String, String> model) {
-        model.put("location", fileLocation());
-        XmlPartialSaver saver = fileSaver(false);
-        model.put("content", saver.asXml());
-        model.put("md5", saver.getMd5());
-    }
-
-    public MailHost getMailHost() {
-        return serverConfig().mailHost();
-    }
-
-    public boolean hasAgent(String uuid) {
-        return agents().hasAgent(uuid);
     }
 
     public JobConfigIdentifier translateToActualCase(JobConfigIdentifier identifier) {
@@ -548,13 +849,6 @@ public class GoConfigService implements Initializer {
         return new JobConfigIdentifier(translatedPipelineName, translatedStageName, translatedJobName);
     }
 
-    public boolean isAdministrator(String username) {
-        return getCurrentConfig().isAdministrator(username);
-    }
-
-    public CommentRenderer getCommentRendererFor(String pipelineName) {
-        return pipelineConfigNamed(new CaseInsensitiveString(pipelineName)).getCommentRenderer();
-    }
 
     public List<PipelineConfig> getAllPipelineConfigs() {
         return getCurrentConfig().getAllPipelineConfigs();
@@ -564,49 +858,17 @@ public class GoConfigService implements Initializer {
         return getConfigForEditing().getAllPipelineConfigs();
     }
 
-    public String adminEmail() {
-        return getCurrentConfig().adminEmail();
+
+    public CommentRenderer getCommentRendererFor(String pipelineName) {
+        return pipelineConfigNamed(new CaseInsensitiveString(pipelineName)).getCommentRenderer();
     }
 
-    public void disableAgents(boolean disabled, AgentInstance... instances) {
-        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
-        for (AgentInstance agentInstance : instances) {
-            String uuid = agentInstance.getUuid();
-
-            if (hasAgent(uuid)) {
-                command.addCommand(GoConfigFileDao.updateApprovalStatus(uuid, disabled));
-            } else {
-                AgentConfig agentConfig = agentInstance.agentConfig();
-                agentConfig.disable(disabled);
-                command.addCommand(GoConfigFileDao.createAddAgentCommand(agentConfig));
-            }
-        }
-        updateConfig(command);
-    }
-
-    public void deleteAgents(AgentInstance... agentInstances) {
-        goConfigFileDao.deleteAgents(agentInstances);
-    }
-
-    public void approvePendingAgent(AgentInstance agentInstance) {
-        agentInstance.enable();
-        if (hasAgent(agentInstance.getUuid())) {
-            LOGGER.warn("Registered agent with the same uuid [" + agentInstance + "] already approved.");
-        } else {
-            this.addAgent(agentInstance.agentConfig());
-        }
-    }
-
-    public Set<MaterialConfig> getSchedulableMaterials() {
-        //TODO append materials which must be polled because configuration is there.
-        // still unique but larger collection
-        return getCurrentConfig().getAllUniqueMaterialsBelongingToAutoPipelines();
-    }
 
     public Stage scheduleStage(String pipelineName, String stageName, SchedulingContext context) {
         PipelineConfig pipelineConfig = getCurrentConfig().pipelineConfigByName(new CaseInsensitiveString(pipelineName));
         return instanceFactory.createStageInstance(pipelineConfig, new CaseInsensitiveString(stageName), context, getCurrentConfig().getMd5(), clock);
     }
+
 
     public MaterialConfig findMaterialWithName(final CaseInsensitiveString pipelineName, final CaseInsensitiveString materialName) {
         MaterialConfigs materialConfigs = materialConfigsFor(pipelineName);
@@ -647,38 +909,6 @@ public class GoConfigService implements Initializer {
         return getCurrentConfig().isPipelineLocked(pipelineName);
     }
 
-    public void modifyResources(AgentInstance[] instances, List<TriStateSelection> selections) {
-        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
-        for (AgentInstance agentInstance : instances) {
-            String uuid = agentInstance.getUuid();
-            if (hasAgent(uuid)) {
-                for (TriStateSelection selection : selections) {
-                    command.addCommand(new GoConfigFileDao.ModifyResourcesCommand(uuid, new Resource(selection.getValue()), selection.getAction()));
-                }
-            }
-        }
-        updateConfig(command);
-    }
-
-    public GoConfigFileDao.CompositeConfigCommand modifyRolesCommand(List<String> users, List<TriStateSelection> roleSelections) {
-        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
-        for (String user : users) {
-            for (TriStateSelection roleSelection : roleSelections) {
-                command.addCommand(new GoConfigFileDao.ModifyRoleCommand(user, roleSelection));
-            }
-        }
-        return command;
-    }
-
-    public UpdateConfigCommand modifyAdminPrivilegesCommand(List<String> users, TriStateSelection adminPrivilege) {
-        GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
-        for (String user : users) {
-            command.addCommand(new GoConfigFileDao.ModifyAdminPrivilegeCommand(user, adminPrivilege));
-        }
-        return command;
-    }
-
-
     public void modifyEnvironments(List<AgentInstance> agents, List<TriStateSelection> selections) {
         GoConfigFileDao.CompositeConfigCommand command = new GoConfigFileDao.CompositeConfigCommand();
         for (AgentInstance agentInstance : agents) {
@@ -692,17 +922,6 @@ public class GoConfigService implements Initializer {
         updateConfig(command);
     }
 
-    public Set<Resource> getAllResources() {
-        return getCurrentConfig().getAllResources();
-    }
-
-    public List<String> getResourceList() {
-        ArrayList<String> resources = new ArrayList<String>();
-        for (Resource res : getCurrentConfig().getAllResources()) {
-            resources.add(res.getName());
-        }
-        return resources;
-    }
 
     public List<CaseInsensitiveString> pipelines(String group) {
         PipelineConfigs configs = getCurrentConfig().pipelines(group);
@@ -713,24 +932,8 @@ public class GoConfigService implements Initializer {
         return pipelines;
     }
 
-	public PipelineConfigs getAllPipelinesInGroup(String group) {
-		return getCurrentConfig().pipelines(group);
-	}
-
-    public GoConfigValidity checkConfigFileValid() {
-        return goConfigFileDao.checkConfigFileValid();
-    }
-
-    public boolean isSecurityEnabled() {
-        return getCurrentConfig().isSecurityEnabled();
-    }
-
-    public SecurityConfig security() {
-        return serverConfig().security();
-    }
-
-    public ServerConfig serverConfig() {
-        return getCurrentConfig().server();
+    public PipelineConfigs getAllPipelinesInGroup(String group) {
+        return getCurrentConfig().pipelines(group);
     }
 
     public boolean hasNextStage(String pipelineName, String lastStageName) {
@@ -771,10 +974,6 @@ public class GoConfigService implements Initializer {
         return getCurrentConfig().previousStage(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(lastStageName));
     }
 
-    public boolean anonymousAccess() {
-        return serverConfig().anonymousAccess();
-    }
-
     public Tabs getCustomizedTabs(String pipelineName, String stageName, String buildName) {
         try {
             JobConfig plan = getCurrentConfig().jobConfigByName(pipelineName, stageName, buildName, false);
@@ -799,17 +998,6 @@ public class GoConfigService implements Initializer {
         return new XmlPartialPipelineSaver(groupName, pipelineIndex, registry);
     }
 
-    public XmlPartialSaver groupSaver(String groupName) {
-        return new XmlPartialPipelineGroupSaver(groupName);
-    }
-
-    public XmlPartialSaver fileSaver(final boolean shouldUpgrade) {
-        return new XmlPartialFileSaver(shouldUpgrade, registry);
-    }
-
-    public String configFileMd5() {
-        return goConfigFileDao.md5OfConfigFile();
-    }
 
     public List<PipelineConfig> downstreamPipelinesOf(String pipelineName) {
         List<PipelineConfig> dependencies = new ArrayList<PipelineConfig>();
@@ -899,171 +1087,34 @@ public class GoConfigService implements Initializer {
         return pipelineSelections;
     }
 
-    public List<Role> rolesForUser(final CaseInsensitiveString user) {
-        return security().getRoles().memberRoles(new AdminUser(user));
-    }
-
-    public boolean isGroupAdministrator(final CaseInsensitiveString userName) {
-        return getCurrentConfig().isGroupAdministrator(userName);
-    }
 
     public boolean hasEnvironmentNamed(final CaseInsensitiveString environmentName) {
         return getCurrentConfig().getEnvironments().hasEnvironmentNamed(environmentName);
     }
 
-    public boolean isOnlyKnownUserAllowedToLogin() {
-        return serverConfig().security().isAllowOnlyKnownUsersToLogin();
+    public XmlPartialSaver groupSaver(String groupName) {
+        return new XmlPartialPipelineGroupSaver(groupName);
     }
 
-    public boolean isLdapConfigured() {
-        return ldapConfig().isEnabled();
-    }
-
-    public boolean isPasswordFileConfigured() {
-        return passwordFileConfig().isEnabled();
-    }
 
     public boolean shouldFetchMaterials(String pipelineName, String stageName) {
         return stageConfigNamed(pipelineName, stageName).isFetchMaterials();
-    }
-
-    public LdapConfig ldapConfig() {
-        return serverConfig().security().ldapConfig();
-    }
-
-    private PasswordFileConfig passwordFileConfig() {
-        return serverConfig().security().passwordFileConfig();
-    }
-
-    public ConfigSaveState updateEnvironment(final String named, final EnvironmentConfig newEnvDefinition, final String md5) {
-        return goConfigFileDao.updateConfig(new NoOverwriteUpdateConfigCommand() {
-            public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-                EnvironmentsConfig environments = cruiseConfig.getEnvironments();
-                EnvironmentConfig oldConfig = environments.named(new CaseInsensitiveString(named));
-                int index = environments.indexOf(oldConfig);
-                environments.remove(index);
-                environments.add(index, newEnvDefinition);
-                return cruiseConfig;
-            }
-
-            public String unmodifiedMd5() {
-                return md5;
-            }
-        });
-    }
-
-    public boolean isUserAdminOfGroup(final CaseInsensitiveString userName, String groupName) {
-        PipelineConfigs group = null;
-        if (groupName != null) {
-            group = getCurrentConfig().findGroup(groupName);
-        }
-        return isUserAdmin(new Username(userName)) || isUserAdminOfGroup(userName, group);
-    }
-
-    public boolean isUserAdminOfGroup(final CaseInsensitiveString userName, PipelineConfigs group) {
-        return group.isUserAnAdmin(userName, rolesForUser(userName));
-    }
-
-    public boolean isUserAdmin(Username username) {
-        return isAdministrator(CaseInsensitiveString.str(username.getUsername()));
-    }
-
-    private boolean isUserTemplateAdmin(Username username) {
-        return getCurrentConfig().getTemplates().canViewAndEditTemplate(username.getUsername());
-    }
-
-    public GoConfigRevision getConfigAtVersion(String version) {
-        GoConfigRevision goConfigRevision = null;
-        try {
-            goConfigRevision = configRepository.getRevision(version);
-        } catch (Exception e) {
-            LOGGER.info("[Go Config Service] Could not fetch cruise config xml at version=" + version, e);
-        }
-        return goConfigRevision;
     }
 
     public List<PipelineConfig> pipelinesForFetchArtifacts(String pipelineName) {
         return currentCruiseConfig().pipelinesForFetchArtifacts(pipelineName);
     }
 
-    private boolean isValidGroup(String groupName, CruiseConfig cruiseConfig, HttpLocalizedOperationResult result) {
-        if (!cruiseConfig.hasPipelineGroup(groupName)) {
-            result.notFound(LocalizedMessage.string("PIPELINE_GROUP_NOT_FOUND", groupName), HealthStateType.general(HealthStateScope.forGroup(groupName)));
-            return false;
-        }
-        return true;
+    //////////////////
+
+
+    //TODO #1133 configuration materials are also schedulable materials
+    public Set<MaterialConfig> getSchedulableMaterials() {
+        //TODO append materials which must be polled because configuration is there.
+        // still unique but larger collection
+        return getCurrentConfig().getAllUniqueMaterialsBelongingToAutoPipelines();
     }
 
-    private boolean isAdminOfGroup(String toGroupName, Username username, HttpLocalizedOperationResult result) {
-        if (!isUserAdminOfGroup(username.getUsername(), toGroupName)) {
-            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_EDIT_GROUP", toGroupName), HealthStateType.unauthorised());
-            return false;
-        }
-        return true;
-    }
-
-    public GoConfigHolder getConfigHolder() {
-        return goConfigFileDao.loadConfigHolder();
-    }
-
-    public CruiseConfig loadCruiseConfigForEdit(Username username, HttpLocalizedOperationResult result) {
-        if (!isUserAdmin(username) && !isUserTemplateAdmin(username)) {
-            result.unauthorized(LocalizedMessage.string("UNAUTHORIZED_TO_ADMINISTER"), HealthStateType.unauthorised());
-        }
-        return clonedConfigForEdit();
-    }
-
-    private CruiseConfig clonedConfigForEdit() {
-        return cloner.deepClone(getConfigForEditing());
-    }
-
-    public ConfigForEdit<PipelineConfigs> loadGroupForEditing(String groupName, Username username, HttpLocalizedOperationResult result) {
-        GoConfigHolder configForEdit = cloner.deepClone(getConfigHolder());
-        if (!isValidGroup(groupName, configForEdit.configForEdit, result)) {
-            return null;
-        }
-
-        if (!isAdminOfGroup(groupName, username, result)) {
-            return null;
-        }
-        PipelineConfigs config = cloner.deepClone(configForEdit.configForEdit.findGroup(groupName));
-        return new ConfigForEdit<PipelineConfigs>(config, configForEdit);
-    }
-
-    public boolean doesMd5Match(String md5) {
-        return configFileMd5().equals(md5);
-    }
-
-    public String getServerId() {
-        return serverConfig().getServerId();
-    }
-
-    public String configChangesFor(String laterMd5, String earlierMd5, LocalizedOperationResult result) {
-        try {
-            return configRepository.configChangesFor(laterMd5, earlierMd5);
-        } catch (IllegalArgumentException e) {
-            result.badRequest(LocalizedMessage.string("CONFIG_VERSION_NOT_FOUND"));
-        } catch (Exception e) {
-            result.internalServerError(LocalizedMessage.string("COULD_NOT_RETRIEVE_CONFIG_DIFF"));
-        }
-        return null;
-    }
-
-    public boolean isAuthorizedToEditTemplate(String templateName, Username username) {
-        return isUserAdmin(username) || getCurrentConfig().getTemplates().canUserEditTemplate(templateName, username.getUsername());
-    }
-
-    public boolean isAuthorizedToViewAndEditTemplates(Username username) {
-        return getCurrentConfig().getTemplates().canViewAndEditTemplate(username.getUsername());
-    }
-
-    public void updateUserPipelineSelections(String id, Long userId, CaseInsensitiveString pipelineToAdd) {
-        PipelineSelections currentSelections = findOrCreateCurrentPipelineSelectionsFor(id, userId);
-        if (!currentSelections.isBlacklist()) {
-            currentSelections.addPipelineToSelections(pipelineToAdd);
-            pipelineRepository.saveSelectedPipelines(currentSelections);
-        }
-    }
 
     public abstract class XmlPartialSaver<T> {
         protected final SAXReader reader;
