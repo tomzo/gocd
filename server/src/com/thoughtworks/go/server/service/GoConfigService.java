@@ -80,6 +80,8 @@ public class GoConfigService implements Initializer {
     private GoCache goCache;
     private ConfigRepository configRepository;
     private ConfigCache configCache;
+    // provides part of configuration that must be polled.
+    private DynamicConfigService dynamicConfig;
 
     private Cloner cloner = new Cloner();
     private Clock clock = new SystemTimeClock();
@@ -596,6 +598,8 @@ public class GoConfigService implements Initializer {
     }
 
     public Set<MaterialConfig> getSchedulableMaterials() {
+        //TODO append materials which must be polled because configuration is there.
+        // still unique but larger collection
         return getCurrentConfig().getAllUniqueMaterialsBelongingToAutoPipelines();
     }
 

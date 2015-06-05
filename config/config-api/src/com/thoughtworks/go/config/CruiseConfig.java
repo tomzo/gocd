@@ -73,6 +73,8 @@ public class CruiseConfig implements Validatable {
     @ConfigSubtag @SkipParameterResolution private EnvironmentsConfig environments = new EnvironmentsConfig();
     @ConfigSubtag @SkipParameterResolution private Agents agents = new Agents();
 
+    //defines other sources of configuration and how to interpret them
+    @ConfigSubtag @SkipParameterResolution private DynamicConfigSources scmConfigs = new DynamicConfigSources();
 
     //This is set reflective by the MagicalGoConfigXmlLoader
     private String md5;
@@ -220,6 +222,7 @@ public class CruiseConfig implements Validatable {
                         pipelineName, stageName));
         return jobConfig;
     }
+    public DynamicConfigSources dynamicConfigSources() { return scmConfigs; }
 
     public Agents agents() {
         return agents;
