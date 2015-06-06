@@ -6,7 +6,7 @@ import com.thoughtworks.go.config.materials.ScmMaterialConfig;
  * Defines single source of remote configuration and name of plugin to interpet it.
  * This goes to standard static xml configuration.
  */
-public class RemoteSourceConfig {
+public class ConfigRepoConfig {
     // defines source of configuration. Any will fit
     private ScmMaterialConfig repo;
 

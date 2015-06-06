@@ -1,5 +1,8 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.remote.PartialConfig;
+import org.apache.commons.lang.NotImplementedException;
+
 import java.util.List;
 
 /**
@@ -7,20 +10,14 @@ import java.util.List;
  * Searches for .pipeline.xml in the source tree
  * and parses contents into configuration objects.
  */
-public class PatternXmlConfigProvider implements ConfigProvider {
+public class XmlPartialConfigProvider implements PartialConfigProvider {
 
     // TODO sensible pattern
     // TODO optional override from provider config
     private String pattern = ".pipeline.xml";
 
     @Override
-    public List<PipelineConfig> allPipelines(String directory) {
-        // TODO scan directory searching for pipeline.xml files and create configs
-        return null;
-    }
-
-    @Override
-    public PipelineConfigs pipelines(String directory, String groupName) {
-        return null;
+    public PartialConfig Load(String configRepoCheckoutDirectory, ConfigurationLoadContext context) {
+        throw new NotImplementedException();
     }
 }

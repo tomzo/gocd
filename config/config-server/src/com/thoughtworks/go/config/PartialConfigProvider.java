@@ -1,5 +1,7 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.remote.PartialConfig;
+
 import java.util.List;
 
 /**
@@ -10,16 +12,12 @@ import java.util.List;
  * Each implementation defines its own pattern
  * to identify configuration files in repository structure.
  */
-public interface ConfigProvider {
-
-    // TODO consider: context in arguments bigger than just directory
+public interface PartialConfigProvider {
 
     // TODO consider: could have Parse() whose result is
     // stored by Go in memory so that single checkout is parsed only once.
 
-    List<PipelineConfig> allPipelines(String directory);
-
-    PipelineConfigs pipelines(String directory,String groupName);
+    PartialConfig Load(String configRepoCheckoutDirectory, ConfigurationLoadContext context);
 
     // any further elements that could be obtained from config repo
 }

@@ -28,7 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.PostConstruct;
 
-import com.thoughtworks.go.config.remote.RemoteSourcesConfig;
+import com.thoughtworks.go.config.remote.ConfigReposConfig;
 import com.thoughtworks.go.config.materials.MaterialConfigs;
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
@@ -74,7 +74,7 @@ public class CruiseConfig implements Validatable {
     @ConfigSubtag @SkipParameterResolution private Agents agents = new Agents();
 
     //defines other sources of configuration and how to interpret them
-    private RemoteSourcesConfig scmConfigs = new RemoteSourcesConfig();
+    private ConfigReposConfig scmConfigs = new ConfigReposConfig();
 
     //This is set reflective by the MagicalGoConfigXmlLoader
     private String md5;
@@ -222,7 +222,7 @@ public class CruiseConfig implements Validatable {
                         pipelineName, stageName));
         return jobConfig;
     }
-    public RemoteSourcesConfig dynamicConfigSources() { return scmConfigs; }
+    public ConfigReposConfig remoteConfigSources() { return scmConfigs; }
 
     public Agents agents() {
         return agents;
