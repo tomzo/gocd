@@ -56,6 +56,7 @@ public class SecurityService {
     }
 
     public boolean hasViewPermissionForGroup(String userName, String pipelineGroupName) {
+        // good example of why global configuration is still needed.
         CruiseConfig cruiseConfig = goConfigService.getCurrentConfig();
 
         if (!cruiseConfig.isSecurityEnabled()) {

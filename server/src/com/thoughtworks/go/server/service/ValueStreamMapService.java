@@ -86,6 +86,7 @@ public class ValueStreamMapService {
     }
 
     private ValueStreamMap buildValueStreamMap(String pipelineName, int counter, Username username, LocalizedOperationResult result) {
+        //TODO #1133 use configuration at revision. Consider that some pipelines might be running on old config, others on newer.
         CruiseConfig cruiseConfig = goConfigService.currentCruiseConfig();
         BuildCause buildCauseForPipeline;
         try {
@@ -170,7 +171,8 @@ public class ValueStreamMapService {
 	}
 
 	private ValueStreamMap buildValueStreamMap(Material material, MaterialInstance materialInstance, Modification modification, List<PipelineConfig> downstreamPipelines, Username username) {
-		CruiseConfig cruiseConfig = goConfigService.currentCruiseConfig();
+        //TODO #1133 use configuration at revision. Consider that some pipelines might be running on old config, others on newer.
+        CruiseConfig cruiseConfig = goConfigService.currentCruiseConfig();
 		ValueStreamMap valueStreamMap = new ValueStreamMap(material, materialInstance, modification);
 		Map<String, List<PipelineConfig>> pipelineToDownstreamMap = cruiseConfig.generatePipelineVsDownstreamMap();
 

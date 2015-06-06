@@ -118,6 +118,7 @@ public class JsonCurrentActivityService {
 
     private Collection<PipelineJsonPresentationModel> allPipelines(String username) {
         List<PipelineJsonPresentationModel> pipelines = new ArrayList<PipelineJsonPresentationModel>();
+        //TODO #1133 use configuration at revision
         for (PipelineConfigs group : goConfigService.getCurrentConfig().getGroups()) {
             if (securityService.hasViewPermissionForGroup(username, group.getGroup())) {
                 for (PipelineConfig config : group) {

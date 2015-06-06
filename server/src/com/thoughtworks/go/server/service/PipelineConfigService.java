@@ -42,6 +42,7 @@ public class PipelineConfigService {
     }
 
     public Map<CaseInsensitiveString, CanDeleteResult> canDeletePipelines() {
+        //TODO #1133 can only delete pipelines defined in static configuration file
         CruiseConfig cruiseConfig = goConfigService.getCurrentConfig();
         Map<CaseInsensitiveString, CanDeleteResult> nameToCanDeleteIt = new HashMap<CaseInsensitiveString, CanDeleteResult>();
         Hashtable<CaseInsensitiveString, Node> hashtable = cruiseConfig.getDependencyTable();

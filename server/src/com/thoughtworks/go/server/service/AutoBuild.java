@@ -65,6 +65,7 @@ public class AutoBuild implements BuildType {
             return BuildCause.createWithModifications(originalMaterialRevisions, GoConstants.DEFAULT_APPROVED_BY);
         }
 
+        //TODO #1133 use configuration at revision
         CruiseConfig cruiseConfig = goConfigService.currentCruiseConfig();
 
         MaterialRevisions recomputedBasedOnDependencies;

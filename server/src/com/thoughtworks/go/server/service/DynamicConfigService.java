@@ -19,11 +19,13 @@ import java.util.Set;
 
 /**
  * understands section of config which needs polling to get configuration objects.
- * Provides configuration with and its history.
+ * Provides configuration and its history.
  */
 @Service
 public class DynamicConfigService implements GoMessageListener<MaterialUpdateCompletedMessage>, ConfigChangedListener {
     private GoConfigFileDao goConfigFileDao;
+    // maybe needed to convert from config to materials
+    private MaterialConfigConverter materialConverter;
 
     private CruiseConfig cruiseConfig() {
         return goConfigFileDao.load();
@@ -43,6 +45,8 @@ public class DynamicConfigService implements GoMessageListener<MaterialUpdateCom
         }
         return materials;
     }
+
+    //TODO merge from many remote sources
 
     // we start with PipelineConfigs but it could be more
     public PipelineConfigs getPipelinesConfiguration(String materialFingerprint) {

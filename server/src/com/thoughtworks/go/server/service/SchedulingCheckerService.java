@@ -70,6 +70,7 @@ public class SchedulingCheckerService {
     }
 
     public boolean canTriggerManualPipeline(String pipelineName, String username, OperationResult result) {
+        //TODO #1133 use configuration at revision
         PipelineConfig pipelineConfig = goConfigService.currentCruiseConfig().pipelineConfigByName(new CaseInsensitiveString(pipelineName));
         return canTriggerManualPipeline(pipelineConfig, username, result);
     }
@@ -81,6 +82,7 @@ public class SchedulingCheckerService {
     }
 
     public void canTriggerPipelineWithTimer(String name, ServerHealthStateOperationResult result) {
+        //TODO #1133 use configuration at revision
         PipelineConfig pipelineConfig = goConfigService.getCurrentConfig().pipelineConfigByName(new CaseInsensitiveString(name));
         canTriggerPipelineWithTimer(pipelineConfig, result);
     }

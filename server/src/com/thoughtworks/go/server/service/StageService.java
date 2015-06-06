@@ -71,6 +71,7 @@ public class StageService implements StageRunFinder, StageFinder {
     private SecurityService securityService;
     private PipelineDao pipelineDao;
     private final ChangesetService changesetService;
+    //TODO #1133 do not talk to goConfigService for each pipeline config directly, instead ask for configration at revision
     private final GoConfigService goConfigService;
     private TransactionTemplate transactionTemplate;
     private TransactionSynchronizationManager transactionSynchronizationManager;
@@ -125,6 +126,7 @@ public class StageService implements StageRunFinder, StageFinder {
     }
 
     public Stage findStageWithIdentifier(String pipelineName, int pipelineCounter, String stageName, String stageCounter, String username, OperationResult result) {
+        //TODO #1133 use configuration at revision
         if (!goConfigService.currentCruiseConfig().hasPipelineNamed(new CaseInsensitiveString(pipelineName))) {
             result.notFound("Not Found", "Pipeline not found", HealthStateType.general(HealthStateScope.GLOBAL));
             return null;
@@ -351,6 +353,7 @@ public class StageService implements StageRunFinder, StageFinder {
         for (StageFeedEntry stageEntry : stageEntries) {
             pipelineIds.add(stageEntry.getPipelineId());
         }
+        //TODO #1133 use configuration at revision
         CruiseConfig config = goConfigService.currentCruiseConfig();
         Map<Long, List<ModificationForPipeline>> revisionsPerPipeline = changesetService.modificationsOfPipelines(pipelineIds, pipelineName, username);
         for (StageFeedEntry stageEntry : stageEntries) {
@@ -408,6 +411,7 @@ public class StageService implements StageRunFinder, StageFinder {
     }
 
 	public StageInstanceModels findDetailedStageHistoryByOffset(String pipelineName, String stageName, Pagination pagination, String username, OperationResult result) {
+        //TODO #1133 use configuration at revision
 		if (!goConfigService.currentCruiseConfig().hasPipelineNamed(new CaseInsensitiveString(pipelineName))) {
 			result.notFound("Not Found", "Pipeline not found", HealthStateType.general(HealthStateScope.GLOBAL));
 			return null;

@@ -545,7 +545,7 @@ public class GoConfigService implements Initializer {
 
     /////// above is good static conf
 
-    // TODO #1133 too big. Expose only parts of config which are static
+    // TODO #1133 too big. Expose smaller parts of config. As static and dynamic
 
     public CruiseConfig currentCruiseConfig() {
         return getCurrentConfig();
@@ -555,7 +555,7 @@ public class GoConfigService implements Initializer {
         return cruiseConfig();
     }
 
-    private CruiseConfig cruiseConfig() {
+    public CruiseConfig cruiseConfig() {
         return goConfigFileDao.load();
     }
 

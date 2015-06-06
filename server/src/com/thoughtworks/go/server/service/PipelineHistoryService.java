@@ -102,6 +102,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
             result.notFound("Not Found", "Pipeline not found", HealthStateType.general(HealthStateScope.GLOBAL));
             return null;
         }
+        //TODO #1133 use configuration at revision
         PipelineConfig pipelineConfig = goConfigService.currentCruiseConfig().pipelineConfigByName(new CaseInsensitiveString(pipeline.getName()));
         if (!securityService.hasViewPermissionForPipeline(username, pipeline.getName())) {
             result.unauthorized("Unauthorized", NOT_AUTHORIZED_TO_VIEW_PIPELINE, HealthStateType.general(HealthStateScope.forPipeline(pipeline.getName())));
@@ -113,6 +114,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
 
     public PipelineInstanceModel loadPipelineForShine(long id) {// TODO: Fix method name - Sachin & JJ
         PipelineInstanceModel pipeline = pipelineDao.loadHistory(id);
+        //TODO #1133 use configuration at revision
         PipelineConfig pipelineConfig = goConfigService.currentCruiseConfig().pipelineConfigByName(new CaseInsensitiveString(pipeline.getName()));
         populatePipelineInstanceModel(pipelineConfig, pipeline);
         return pipeline;
@@ -136,6 +138,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
 	 * Populates future stages as empty, Populates can run for pipeline & each stage, Populate stage run permission
 	 */
 	public PipelineInstanceModels loadMinimalData(String pipelineName, Pagination pagination, String username, OperationResult result) {
+        //TODO #1133 use configuration at revision
 		if (!goConfigService.currentCruiseConfig().hasPipelineNamed(new CaseInsensitiveString(pipelineName))) {
 			result.notFound("Not Found", "Pipeline " + pipelineName + " not found", HealthStateType.general(HealthStateScope.GLOBAL));
 			return null;
@@ -161,6 +164,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
 	}
 
 	public PipelineStatusModel getPipelineStatus(String pipelineName, String username, OperationResult result) {
+        //TODO #1133 use configuration at revision
 		PipelineConfig pipelineConfig = goConfigService.currentCruiseConfig().getPipelineConfigByName(new CaseInsensitiveString(pipelineName));
 		if (pipelineConfig == null) {
 			result.notFound("Not Found", "Pipeline not found", HealthStateType.general(HealthStateScope.GLOBAL));
@@ -306,6 +310,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
 
     public PipelineInstanceModels latestInstancesForConfiguredPipelines(Username username) {
         PipelineInstanceModels pipelineInstances = PipelineInstanceModels.createPipelineInstanceModels();
+        //TODO #1133 use configuration at revision
         for (PipelineConfigs group : goConfigService.currentCruiseConfig().getGroups()) {
             for (PipelineConfig pipelineConfig : group) {
                 PipelineInstanceModel pipelineInstanceModel = latest(CaseInsensitiveString.str(pipelineConfig.name()), username);
@@ -449,6 +454,7 @@ public class PipelineHistoryService implements PipelineInstanceLoader {
     }
 
     private PipelineGroupModels allPipelineInstances(Username username) {
+        //TODO #1133 use configuration at revision
         CruiseConfig currentConfig = goConfigService.currentCruiseConfig();
         PipelineGroups groups = currentConfig.getGroups();
         PipelineInstanceModels activePipelines = filterPermissions(pipelineDao.loadActivePipelines(), username);
