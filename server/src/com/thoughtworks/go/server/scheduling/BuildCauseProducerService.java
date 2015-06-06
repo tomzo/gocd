@@ -119,6 +119,7 @@ public class BuildCauseProducerService {
 
         try {
             PipelineConfig pipelineConfig = goConfigService.pipelineConfigNamed(new CaseInsensitiveString(pipelineName));
+            // TODO #1133 But wait for config materials first. Then create instance below.
             newProduceBuildCause(pipelineConfig, new AutoBuild(goConfigService, pipelineService, pipelineName, systemEnvironment, materialChecker, serverHealthService), result, trackingId);
         } finally {
             schedulingPerformanceLogger.autoSchedulePipelineFinish(trackingId, pipelineName);
@@ -129,6 +130,8 @@ public class BuildCauseProducerService {
         long trackingId = schedulingPerformanceLogger.manualSchedulePipelineStart(CaseInsensitiveString.str(pipelineConfig.name()));
 
         try {
+            // TODO #1133 But wait for config materials first. Then create instance below.
+            // And who passed that pipelineConfig as argument? it should be polled and created here first.
             WaitForPipelineMaterialUpdate update = new WaitForPipelineMaterialUpdate(pipelineConfig, new ManualBuild(username), scheduleOptions);
             update.start(result);
         } finally {
@@ -174,6 +177,7 @@ public class BuildCauseProducerService {
             MaterialRevisions peggedRevisions = specificMaterialRevisionFactory.create(pipelineName, scheduleOptions.getSpecifiedRevisions());
             BuildCause previousBuild = pipelineScheduleQueue.mostRecentScheduled(pipelineName);
 
+            //TODO #1133 these material should enlist configuration repo material
             Materials materials = materialConfigConverter.toMaterials(pipelineConfig.materialConfigs());
             MaterialConfigs expandedMaterialConfigs = materialExpansionService.expandMaterialConfigsForScheduling(pipelineConfig.materialConfigs());
             Materials expandedMaterials = materialConfigConverter.toMaterials(expandedMaterialConfigs);
@@ -266,11 +270,15 @@ public class BuildCauseProducerService {
         private final PipelineConfig pipelineConfig;
         private final BuildType buildType;
 
+        //TODO #1133 these materials must contain configuration material so that we wait for PipelineConfig
         private final ConcurrentHashMap<String, Material> pendingMaterials;
         private boolean failed;
         private ScheduleOptions scheduleOptions;
 
         private WaitForPipelineMaterialUpdate(PipelineConfig pipelineConfig, BuildType buildType, ScheduleOptions scheduleOptions) {
+            //TODO #1133 WARN this is why polling module would make sense or separate system to handle configuration polling and updates -
+            // Because we need PipelineConfig pipelineConfig to list materials to wait for.
+            // But alternative is that we can wait for all configuration materials to finish polling first and then create this instance.
             this.pipelineConfig = pipelineConfig;
             this.buildType = buildType;
             this.scheduleOptions = scheduleOptions;

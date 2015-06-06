@@ -83,6 +83,9 @@ import static com.thoughtworks.go.util.GoConstants.DEFAULT_APPROVED_BY;
 public class ScheduleService {
     private static final Logger LOGGER = Logger.getLogger(ScheduleService.class);
 
+    //TODO #1133 this service asks for PipelineConfig and StageConfig,
+    // we must make sure that when these configs are from dynamic source then they have been polled already
+
     private GoConfigService goConfigService;
     private PipelineService pipelineService;
     private StageService stageService;

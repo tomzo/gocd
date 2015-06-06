@@ -94,6 +94,7 @@ public class MaterialService {
             return new ArrayList<MatchedRevision>();
         }
         try {
+            // TODO #1133 material configs from proper revision
             MaterialConfig materialConfig = goConfigService.materialForPipelineWithFingerprint(pipelineName, fingerprint);
             return materialRepository.findRevisionsMatching(materialConfig, searchString);
         } catch (RuntimeException e) {

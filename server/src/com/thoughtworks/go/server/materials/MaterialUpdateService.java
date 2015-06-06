@@ -99,6 +99,7 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
             LOGGER.debug(format("[Material Update] [On Timer] materials IN-PROGRESS: %s, ALL-MATERIALS: %s", inProgress, schedulableMaterials));
         }
         for (Material material : schedulableMaterials) {
+            // material may refer to one that contains configuration
             if (hasUpdateIntervalElapsedForScmMaterial(material)) {
                 updateMaterial(material);
             }
@@ -217,7 +218,10 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
 
     private void updateSchedulableMaterials(boolean forceLoad) {
         if (forceLoad || schedulableMaterials == null) {
-            schedulableMaterials = materialConfigConverter.toMaterials(goConfigService.getSchedulableMaterials());
+            // #1133 This is the point where configuration materials are obtained from go config service.
+            Set<MaterialConfig> schedulableMaterialConfigs = goConfigService.getSchedulableMaterials();
+            // so below also converts configuration materials
+            schedulableMaterials = materialConfigConverter.toMaterials(schedulableMaterialConfigs);
         }
     }
 }
