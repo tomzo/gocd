@@ -546,6 +546,8 @@ public class GoConfigService implements Initializer {
     /////// above is good static conf
 
     // TODO #1133 too big. Expose smaller parts of config. As static and dynamic
+    // it would make most sense to make them private and go from that.
+    // but if not possible then we must implement MergeCruiseConfig
 
     public CruiseConfig currentCruiseConfig() {
         return getCurrentConfig();
@@ -555,7 +557,8 @@ public class GoConfigService implements Initializer {
         return cruiseConfig();
     }
 
-    public CruiseConfig cruiseConfig() {
+    private CruiseConfig cruiseConfig() {
+        // TODO #1133 load then merge with all dynamic sections
         return goConfigFileDao.load();
     }
 

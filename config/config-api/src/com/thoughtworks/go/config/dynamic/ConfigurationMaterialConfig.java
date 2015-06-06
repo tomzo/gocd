@@ -1,11 +1,13 @@
-package com.thoughtworks.go.config.materials;
+package com.thoughtworks.go.config.dynamic;
+
+import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 
 /**
  * Defines source of remote configuration.
  */
 public class ConfigurationMaterialConfig {
     // defines source of configuration. Any will fit
-    private  ScmMaterialConfig repo;
+    private ScmMaterialConfig repo;
 
 
     // TODO something must instantiate this name into proper implementation of ConfigProvider

@@ -74,7 +74,7 @@ public class CruiseConfig implements Validatable {
     @ConfigSubtag @SkipParameterResolution private Agents agents = new Agents();
 
     //defines other sources of configuration and how to interpret them
-    @ConfigSubtag @SkipParameterResolution private DynamicConfigSources scmConfigs = new DynamicConfigSources();
+    private DynamicConfigSources scmConfigs = new DynamicConfigSources();
 
     //This is set reflective by the MagicalGoConfigXmlLoader
     private String md5;
@@ -236,6 +236,7 @@ public class CruiseConfig implements Validatable {
         return serverConfig.mailHost();
     }
 
+    //TODO #1133 in MergedCruiseConfig environments would be merged from parts. return MergeEnvironmentsConfig
     public EnvironmentsConfig getEnvironments() {
         return environments;
     }
