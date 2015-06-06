@@ -35,6 +35,8 @@ public class LegacyMaterialChecker implements ModificationSource {
     private final MaterialService materialService;
     private SubprocessExecutionContext execCtx;
 
+    // #1133 this is good for configuration materials
+
     @Autowired
     public LegacyMaterialChecker(MaterialService materialService, final SubprocessExecutionContext execCtx) {
         this.materialService = materialService;

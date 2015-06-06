@@ -12,7 +12,9 @@ import com.thoughtworks.go.server.messaging.GoMessageListener;
 import org.apache.commons.lang.NotImplementedException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * understands section of config which needs polling to get configuration objects.
@@ -20,7 +22,11 @@ import java.util.List;
  */
 //@Service
 public class DynamicConfigService implements GoMessageListener<MaterialUpdateCompletedMessage>, ConfigChangedListener {
+    //TODO actually all static config that this needs is the config-repos
     private GoConfigFileDao goConfigFileDao;
+    // config provider for each repository type
+    private Map<String, ConfigProvider> configProviderMap ;
+
     // maybe needed to convert from config to materials
     private MaterialConfigConverter materialConverter;
 

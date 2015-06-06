@@ -559,6 +559,7 @@ public class CruiseConfig implements Validatable {
         return getUniqueMaterials(false);
     }
 
+    //TODO #1133 something like this but including the configuration materials
     private Set<MaterialConfig> getUniqueMaterials(boolean ignoreManualPipelines) {
         Set<MaterialConfig> materialConfigs = new HashSet<MaterialConfig>();
         Set<Map> uniqueMaterials = new HashSet<Map>();

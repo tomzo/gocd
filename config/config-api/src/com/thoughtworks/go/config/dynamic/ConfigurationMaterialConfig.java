@@ -4,6 +4,7 @@ import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 
 /**
  * Defines source of remote configuration.
+ * This goes to standard static xml configuration.
  */
 public class ConfigurationMaterialConfig {
     // defines source of configuration. Any will fit
