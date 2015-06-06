@@ -1,8 +1,9 @@
 package com.thoughtworks.go.server.service;
 
 import com.thoughtworks.go.config.*;
-import com.thoughtworks.go.config.dynamic.ConfigurationMaterialConfig;
-import com.thoughtworks.go.config.dynamic.PartialConfig;
+import com.thoughtworks.go.config.remote.RemoteSourceConfig;
+import com.thoughtworks.go.config.remote.RemoteSourcesConfig;
+import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import com.thoughtworks.go.domain.materials.Material;
 import com.thoughtworks.go.domain.materials.Revision;
@@ -12,7 +13,6 @@ import com.thoughtworks.go.server.messaging.GoMessageListener;
 import org.apache.commons.lang.NotImplementedException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +21,7 @@ import java.util.Map;
  * Provides configuration and its history.
  */
 //@Service
-public class DynamicConfigService implements GoMessageListener<MaterialUpdateCompletedMessage>, ConfigChangedListener {
+public class RemoteConfigService implements GoMessageListener<MaterialUpdateCompletedMessage>, ConfigChangedListener {
     //TODO actually all static config that this needs is the config-repos
     private GoConfigFileDao goConfigFileDao;
     // config provider for each repository type
@@ -40,9 +40,9 @@ public class DynamicConfigService implements GoMessageListener<MaterialUpdateCom
     }
 
     public List<ScmMaterialConfig> getConfigurationMaterials() {
-        DynamicConfigSources sources = cruiseConfig().dynamicConfigSources();
+        RemoteSourcesConfig sources = cruiseConfig().dynamicConfigSources();
         List<ScmMaterialConfig> materials = new ArrayList<ScmMaterialConfig>();
-        for(ConfigurationMaterialConfig config : sources)
+        for(RemoteSourceConfig config : sources)
         {
             materials.add(config.getMaterialConfig());
         }

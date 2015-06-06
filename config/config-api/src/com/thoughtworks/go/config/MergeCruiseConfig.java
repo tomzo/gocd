@@ -1,6 +1,6 @@
 package com.thoughtworks.go.config;
 
-import com.thoughtworks.go.config.dynamic.PartialConfig;
+import com.thoughtworks.go.config.remote.PartialConfig;
 
 import java.util.List;
 

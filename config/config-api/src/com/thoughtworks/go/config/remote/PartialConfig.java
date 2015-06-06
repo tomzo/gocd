@@ -1,4 +1,4 @@
-package com.thoughtworks.go.config.dynamic;
+package com.thoughtworks.go.config.remote;
 
 import com.thoughtworks.go.config.EnvironmentsConfig;
 

@@ -1,12 +1,12 @@
-package com.thoughtworks.go.config.dynamic;
+package com.thoughtworks.go.config.remote;
 
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 
 /**
- * Defines source of remote configuration.
+ * Defines single source of remote configuration and name of plugin to interpet it.
  * This goes to standard static xml configuration.
  */
-public class ConfigurationMaterialConfig {
+public class RemoteSourceConfig {
     // defines source of configuration. Any will fit
     private ScmMaterialConfig repo;
 

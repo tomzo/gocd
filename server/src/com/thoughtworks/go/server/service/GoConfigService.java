@@ -82,7 +82,7 @@ public class GoConfigService implements Initializer {
     private ConfigCache configCache;
     // provides part of configuration that must be polled.
     // when configuration is viewed through this then there is revision of configuration
-    private DynamicConfigService dynamicConfig;
+    private RemoteConfigService dynamicConfig;
 
     private Cloner cloner = new Cloner();
     private Clock clock = new SystemTimeClock();
@@ -545,7 +545,7 @@ public class GoConfigService implements Initializer {
 
     /////// above is good static conf
 
-    // TODO #1133 too big. Expose smaller parts of config. As static and dynamic
+    // TODO #1133 too big. Expose smaller parts of config. As static and remote
     // it would make most sense to make them private and go from that.
     // but if not possible then we must implement MergeCruiseConfig
 
@@ -558,7 +558,7 @@ public class GoConfigService implements Initializer {
     }
 
     private CruiseConfig cruiseConfig() {
-        // TODO #1133 load then merge with all dynamic sections
+        // TODO #1133 load then merge with all remote sections
         return goConfigFileDao.load();
     }
 
@@ -728,7 +728,7 @@ public class GoConfigService implements Initializer {
     }
 
 
-    // TODO #1133 these should be taken from dynamic configuration. They have versions.
+    // TODO #1133 these should be taken from remote configuration. They have versions.
 
     private boolean canEditPipeline(String pipelineName, Username username, LocalizedOperationResult result) {
         if (!doesPipelineExist(pipelineName, result)) {
@@ -1115,6 +1115,7 @@ public class GoConfigService implements Initializer {
     public Set<MaterialConfig> getSchedulableMaterials() {
         //TODO append materials which must be polled because configuration is there.
         // still unique but larger collection
+        // add from dynamicConfig.getConfigurationMaterials();
         return getCurrentConfig().getAllUniqueMaterialsBelongingToAutoPipelines();
     }
 
