@@ -139,6 +139,7 @@ public class PipelineScheduler implements ConfigChangedListener, GoMessageListen
 
         LOGGER.info(String.format("[Pipeline Schedule] [Accepted] Manual trigger of pipeline '%s' accepted for user %s", pipelineName, CaseInsensitiveString.str(username.getUsername())));
         removeLicenseInvalidFromLog();
+        // TODO #1133 pipeline at revision
         PipelineConfig pipelineConfig = goConfigService.pipelineConfigNamed(new CaseInsensitiveString(pipelineName));
         buildCauseProducerService.manualSchedulePipeline(username, pipelineConfig, scheduleOptions, result);
         LOGGER.info(String.format("[Pipeline Schedule] [Processed] Manual trigger of pipeline '%s' processed with result '%s'", pipelineName, result.getServerHealthState()));

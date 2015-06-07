@@ -1,5 +1,6 @@
-package com.thoughtworks.go.config;
+package com.thoughtworks.go.config.merge;
 
+import com.thoughtworks.go.config.CruiseConfig;
 import com.thoughtworks.go.config.remote.PartialConfig;
 
 import java.util.List;

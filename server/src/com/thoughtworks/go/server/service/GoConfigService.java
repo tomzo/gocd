@@ -82,7 +82,7 @@ public class GoConfigService implements Initializer {
     private ConfigCache configCache;
     // provides part of configuration that must be polled.
     // when configuration is viewed through this then there is revision of configuration
-    private PartialConfigsService dynamicConfig;
+    private ConfigMergeService mergedConfig;
 
     private Cloner cloner = new Cloner();
     private Clock clock = new SystemTimeClock();

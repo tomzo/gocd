@@ -3,6 +3,7 @@ package com.thoughtworks.go.server.service;
 import com.thoughtworks.go.config.CruiseConfig;
 import com.thoughtworks.go.config.GoConfigFileDao;
 import com.thoughtworks.go.config.remote.PartialConfig;
+import org.apache.commons.lang.NotImplementedException;
 
 import java.util.List;
 
@@ -17,5 +18,7 @@ public class ConfigMergeService {
         return goConfigFileDao.load();
     }
 
-    private List<PartialConfig>
+    private List<PartialConfig> parts() {
+        throw new NotImplementedException();
+    }
 }
