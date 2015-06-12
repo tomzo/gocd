@@ -35,7 +35,7 @@ describe "admin/pipelines/environment_variables.html.erb" do
     @pipeline.setVariables(variables)
     assign(:pipeline, @pipeline)
 
-    assign(:cruise_config, @cruise_config = CruiseConfig.new)
+    assign(:cruise_config, @cruise_config = BasicCruiseConfig.new)
     @cruise_config.addPipeline("group-1", @pipeline)
 
     in_params(:pipeline_name => "foo_bar", :action => "new", :controller => "admin/pipelines")

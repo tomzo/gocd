@@ -67,7 +67,7 @@ describe Admin::JobsController do
     before(:each) do
       controller.stub(:populate_config_validity)
 
-      @cruise_config = CruiseConfig.new()
+      @cruise_config = BasicCruiseConfig.new()
       @pipeline = PipelineConfigMother.createPipelineConfig("pipeline-name", "stage-name", ["job-1", "job-2", "job-3"].to_java(java.lang.String))
       @cruise_config.addPipeline("defaultGroup", @pipeline)
 
@@ -280,7 +280,7 @@ describe Admin::JobsController do
         response.location.should =~ /admin\/pipelines\/pipeline-name\/stages\/stage-name\/job\/job-1\/tabs?.*?fm=(.+)/
         assert_update_command ::ConfigUpdate::JobNode, ::ConfigUpdate::NodeAsSubject, ::ConfigUpdate::RefsAsUpdatedRefs
      end
-        
+
       it "should clear environment variables" do
         stub_save_for_success
 
@@ -422,4 +422,3 @@ describe Admin::JobsController do
     end
   end
 end
-
