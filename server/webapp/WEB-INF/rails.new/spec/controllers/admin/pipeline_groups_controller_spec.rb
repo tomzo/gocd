@@ -101,7 +101,7 @@ describe Admin::PipelineGroupsController do
       @security_service.stub(:isUserAdminOfGroup).and_return(true)
       @user = current_user
       @groups = PipelineConfigMother.createGroups(["group1", "group2", "group3"].to_java(java.lang.String))
-      @config = CruiseConfig.new(@groups.to_a.to_java(PipelineConfigs))
+      @config = CruiseConfig.new(@groups.to_a.to_java(BasicPipelineConfigs))
       group_for_edit = ConfigForEdit.new(@groups.get(0), @config, @config)
       @go_config_service.stub(:loadGroupForEditing).and_return(group_for_edit)
       @go_config_service.stub(:registry).and_return(MockRegistryModule::MockRegistry.new)
@@ -114,10 +114,10 @@ describe Admin::PipelineGroupsController do
     describe :new do
       it "should return a new pipeline group" do
         @go_config_service.should_receive(:getConfigForEditing).and_return(@config)
-        
+
         get :new
 
-        assigns[:group].should == PipelineConfigs.new
+        assigns[:group].should == BasicPipelineConfigs.new
         assert_template layout: false
       end
     end
@@ -130,7 +130,7 @@ describe Admin::PipelineGroupsController do
 
       it "should create a new pipeline group with the given name" do
         stub_save_for_success(@config)
-        group = PipelineConfigs.new("name", Authorization.new(), [].to_java(PipelineConfig))
+        group = BasicPipelineConfigs.new("name", Authorization.new(), [].to_java(PipelineConfig))
 
         post :create, :config_md5 => "1234abcd", :group => { :group => "name"}
 

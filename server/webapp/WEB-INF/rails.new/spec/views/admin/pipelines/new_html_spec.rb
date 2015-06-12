@@ -29,7 +29,7 @@ describe "admin/pipelines/new.html.erb" do
     @material_config.setName(CaseInsensitiveString.new("Svn Material Name"))
     @pipeline.materialConfigs().clear()
     @pipeline.addMaterialConfig(@material_config)
-    @pipeline_group = PipelineConfigs.new
+    @pipeline_group = BasicPipelineConfigs.new
     @pipeline_group.add(@pipeline)
 
     assign(:pipeline, @pipeline)
@@ -114,7 +114,7 @@ describe "admin/pipelines/new.html.erb" do
     it "should show dropdown for group name if user is a group admin" do
       assign(:groups_list, ["foo.bar", "some_other_group"])
       view.stub(:is_user_a_group_admin?).and_return(true)
-      
+
       render
 
       Capybara.string(response.body).find("form[method='post'][action='create_path']").tap do |form|

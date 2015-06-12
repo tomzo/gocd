@@ -155,7 +155,7 @@ describe Admin::PipelinesSnippetController do
       it "should persist group xml and redirect to show" do
         @result.setMessage(LocalizedMessage.string("SAVED_SUCCESSFULLY"))
         controller.should_receive(:set_flash_message).with("Saved successfully.","success").and_return("Success!")
-        pipeline_configs = double(PipelineConfigs.class)
+        pipeline_configs = double(BasicPipelineConfigs.class)
         pipeline_configs.stub(:get_group).and_return("renamed_group")
         updated_xml = "updated pipelines xml"
         @result.should_receive(:is_successful).and_return(true)
