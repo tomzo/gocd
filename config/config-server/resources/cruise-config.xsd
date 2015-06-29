@@ -147,7 +147,6 @@
                 <xsd:element name="p4" type="p4Type"/>
                 <xsd:element name="git" type="gitType"/>
                 <xsd:element name="tfs" type="tfsType"/>
-                <xsd:element name="scm" type="scmReferenceType"/>
             </xsd:choice>
             <xsd:element name="configuration" minOccurs="0" maxOccurs="1" type="configurationType"/>
         </xsd:sequence>
