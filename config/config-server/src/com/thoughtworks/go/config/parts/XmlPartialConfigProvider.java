@@ -17,6 +17,8 @@ import java.util.List;
  */
 public class XmlPartialConfigProvider implements PartialConfigProvider {
 
+    public static final String ProviderName = "gocd-xml";
+
     private final String defaultPatter = "**/*.gocd.xml";
 
     private MagicalGoConfigXmlLoader loader;
