@@ -93,6 +93,14 @@ public class Migration_1 {
                         crGitMaterial_1.getFilter(),
                         crGitMaterial_1.getUrl(),
                         crGitMaterial_1.getBranch());
+            case CRHgMaterial_1.TYPE_NAME:
+                CRHgMaterial_1 crHgMaterial_1 = (CRHgMaterial_1)material_1;
+                return new CRHgMaterial(
+                        crHgMaterial_1.getName(),
+                        crHgMaterial_1.getDirectory(),
+                        crHgMaterial_1.isAutoUpdate(),
+                        crHgMaterial_1.getFilter(),
+                        crHgMaterial_1.getUrl());
             default:
                 throw new CRMigrationException(
                         String.format("Invalid or unknown material type %s",typeName));

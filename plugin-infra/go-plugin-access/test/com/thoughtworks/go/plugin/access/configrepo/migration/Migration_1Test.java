@@ -4,10 +4,7 @@ import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
-import com.thoughtworks.go.plugin.configrepo.material.CRDependencyMaterial_1;
-import com.thoughtworks.go.plugin.configrepo.material.CRGitMaterial_1;
-import com.thoughtworks.go.plugin.configrepo.material.CRPackageMaterial_1;
-import com.thoughtworks.go.plugin.configrepo.material.CRPluggableScmMaterial_1;
+import com.thoughtworks.go.plugin.configrepo.material.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -114,5 +111,23 @@ public class Migration_1Test {
         assertThat(gitMaterial.getFolder(), is("dir1"));
         assertThat(gitMaterial.getFilter(),hasItem("externals"));
         assertThat(gitMaterial.getFilter(),hasItem("tools"));
+    }
+
+
+    @Test
+    public void shouldMigrateHgMaterial()
+    {
+        CRHgMaterial_1 scmMaterial = new CRHgMaterial_1("hgMaterial1","dir1",false,"url1","externals","tools");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("hgMaterial1"));
+        assertThat(result instanceof CRHgMaterial,is(true));
+        CRHgMaterial hgMaterial = (CRHgMaterial)result;
+
+        assertThat(hgMaterial.getUrl(),is("url1"));
+        assertThat(hgMaterial.getName(),is("hgMaterial1"));
+        assertThat(hgMaterial.getFolder(), is("dir1"));
+        assertThat(hgMaterial.getFilter(),hasItem("externals"));
+        assertThat(hgMaterial.getFilter(),hasItem("tools"));
     }
 }
