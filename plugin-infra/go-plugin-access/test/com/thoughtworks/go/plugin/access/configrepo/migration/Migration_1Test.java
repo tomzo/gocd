@@ -8,6 +8,7 @@ import com.thoughtworks.go.plugin.configrepo.material.*;
 import org.junit.Before;
 import org.junit.Test;
 
+import static junit.framework.TestCase.assertNull;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
@@ -129,5 +130,50 @@ public class Migration_1Test {
         assertThat(hgMaterial.getFolder(), is("dir1"));
         assertThat(hgMaterial.getFilter(),hasItem("externals"));
         assertThat(hgMaterial.getFilter(),hasItem("tools"));
+    }
+
+    @Test
+    public void shouldMigrateSvnMaterial_WithPlainPassword()
+    {
+        CRSvnMaterial_1 scmMaterial = new CRSvnMaterial_1("svnMaterial1","destDir1", false,
+                "http://svn","user1","pass1",true,"tools","lib");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("svnMaterial1"));
+        assertThat(result instanceof CRSvnMaterial,is(true));
+        CRSvnMaterial svnMaterial = (CRSvnMaterial)result;
+
+        assertThat(svnMaterial.getUrl(),is("http://svn"));
+        assertThat(svnMaterial.getUsername(),is("user1"));
+        assertThat(svnMaterial.getPassword(),is("pass1"));
+        assertNull(svnMaterial.getEncryptedPassword());
+        assertThat(svnMaterial.isCheckExternals(),is(true));
+        assertThat(svnMaterial.getName(),is("svnMaterial1"));
+        assertThat(svnMaterial.getFolder(), is("destDir1"));
+        assertThat(svnMaterial.getFilter(),hasItem("lib"));
+        assertThat(svnMaterial.getFilter(),hasItem("tools"));
+    }
+    @Test
+    public void shouldMigrateSvnMaterial_WithEncryptedPassword()
+    {
+        CRSvnMaterial_1 scmMaterial = new CRSvnMaterial_1("svnMaterial1","destDir1", false,
+                "http://svn","user1","pass1",true,"tools","lib");
+        scmMaterial.setPassword(null);
+        scmMaterial.setEncryptedPassword("127g736gfr");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("svnMaterial1"));
+        assertThat(result instanceof CRSvnMaterial,is(true));
+        CRSvnMaterial svnMaterial = (CRSvnMaterial)result;
+
+        assertThat(svnMaterial.getUrl(),is("http://svn"));
+        assertThat(svnMaterial.getUsername(),is("user1"));
+        assertThat(svnMaterial.getEncryptedPassword(),is("127g736gfr"));
+        assertNull(svnMaterial.getPassword());
+        assertThat(svnMaterial.isCheckExternals(),is(true));
+        assertThat(svnMaterial.getName(),is("svnMaterial1"));
+        assertThat(svnMaterial.getFolder(), is("destDir1"));
+        assertThat(svnMaterial.getFilter(),hasItem("lib"));
+        assertThat(svnMaterial.getFilter(),hasItem("tools"));
     }
 }
