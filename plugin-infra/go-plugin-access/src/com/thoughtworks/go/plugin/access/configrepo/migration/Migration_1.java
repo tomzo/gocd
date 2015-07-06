@@ -122,6 +122,30 @@ public class Migration_1 {
                         crSvnMaterial_1.getUserName(),
                         crSvnMaterial_1.getPassword(),
                         crSvnMaterial_1.isCheckExternals());
+            case CRP4Material_1.TYPE_NAME:
+                CRP4Material_1 crp4Material_1 = (CRP4Material_1)material_1;
+                if(crp4Material_1.hasEncryptedPassword())
+                    return CRP4Material.withEncryptedPassword(
+                        crp4Material_1.getName(),
+                        crp4Material_1.getDirectory(),
+                        crp4Material_1.isAutoUpdate(),
+                        crp4Material_1.getFilter(),
+                        crp4Material_1.getServerAndPort(),
+                        crp4Material_1.getUserName(),
+                        crp4Material_1.getEncryptedPassword(),
+                        crp4Material_1.getUseTickets(),
+                        crp4Material_1.getView());
+                else
+                    return CRP4Material.withPlainPassword(
+                            crp4Material_1.getName(),
+                            crp4Material_1.getDirectory(),
+                            crp4Material_1.isAutoUpdate(),
+                            crp4Material_1.getFilter(),
+                            crp4Material_1.getServerAndPort(),
+                            crp4Material_1.getUserName(),
+                            crp4Material_1.getPassword(),
+                            crp4Material_1.getUseTickets(),
+                            crp4Material_1.getView());
             default:
                 throw new CRMigrationException(
                         String.format("Invalid or unknown material type %s",typeName));

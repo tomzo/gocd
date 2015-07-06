@@ -176,4 +176,58 @@ public class Migration_1Test {
         assertThat(svnMaterial.getFilter(),hasItem("lib"));
         assertThat(svnMaterial.getFilter(),hasItem("tools"));
     }
+
+
+    @Test
+    public void shouldMigrateP4Material_WithPlainPassword()
+    {
+        String exampleView = "//depot/dev/src...          //anything/src/...";
+
+        CRP4Material_1 scmMaterial = new CRP4Material_1(
+                "p4materialName", "destDir1", false,"10.18.3.102:1666",exampleView,"user1","pass1",true,"lib","tools");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("p4materialName"));
+        assertThat(result instanceof CRP4Material,is(true));
+        CRP4Material p4Material = (CRP4Material)result;
+
+        assertThat(p4Material.getServerAndPort(),is("10.18.3.102:1666"));
+        assertThat(p4Material.getView(),is(exampleView));
+        assertThat(p4Material.getUserName(),is("user1"));
+        assertThat(p4Material.getPassword(),is("pass1"));
+        assertNull(p4Material.getEncryptedPassword());
+        assertThat(p4Material.getUseTickets(),is(true));
+        assertThat(p4Material.getName(),is("p4materialName"));
+        assertThat(p4Material.getFolder(), is("destDir1"));
+        assertThat(p4Material.getFilter(),hasItem("lib"));
+        assertThat(p4Material.getFilter(),hasItem("tools"));
+    }
+
+
+    @Test
+    public void shouldMigrateP4Material_WithEncryptedPassword()
+    {
+        String exampleView = "//depot/dev/src...          //anything/src/...";
+
+        CRP4Material_1 scmMaterial = new CRP4Material_1(
+                "p4materialName", "destDir1", false,"10.18.3.102:1666",exampleView,"user1","pass1",true,"lib","tools");
+        scmMaterial.setPassword(null);
+        scmMaterial.setEncryptedPassword("127g736gfr");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("p4materialName"));
+        assertThat(result instanceof CRP4Material,is(true));
+        CRP4Material p4Material = (CRP4Material)result;
+
+        assertThat(p4Material.getServerAndPort(),is("10.18.3.102:1666"));
+        assertThat(p4Material.getView(),is(exampleView));
+        assertThat(p4Material.getUserName(),is("user1"));
+        assertThat(p4Material.getEncryptedPassword(),is("127g736gfr"));
+        assertNull(p4Material.getPassword());
+        assertThat(p4Material.getUseTickets(),is(true));
+        assertThat(p4Material.getName(),is("p4materialName"));
+        assertThat(p4Material.getFolder(), is("destDir1"));
+        assertThat(p4Material.getFilter(),hasItem("lib"));
+        assertThat(p4Material.getFilter(),hasItem("tools"));
+    }
 }
