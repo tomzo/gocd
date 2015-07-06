@@ -38,6 +38,8 @@ public class MaterialTypeAdapter implements JsonDeserializer<CRMaterial_1> {
             return CRSvnMaterial_1.class;
         if(typeName.equals(CRP4Material_1.TYPE_NAME))
             return CRP4Material_1.class;
+        if(typeName.equals(CRTfsMaterial_1.TYPE_NAME))
+            return CRTfsMaterial_1.class;
         else
             throw new JsonParseException(
                     String.format("Invalid or unknown material type '%s'",typeName));

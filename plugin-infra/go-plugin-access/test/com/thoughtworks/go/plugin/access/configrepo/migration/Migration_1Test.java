@@ -230,4 +230,54 @@ public class Migration_1Test {
         assertThat(p4Material.getFilter(),hasItem("lib"));
         assertThat(p4Material.getFilter(),hasItem("tools"));
     }
+
+    @Test
+    public void shouldMigrateTfsMaterial_WithPlainPassword()
+    {
+        CRTfsMaterial_1 scmMaterial = new CRTfsMaterial_1(
+                "tfsMaterialName", "dir1", false,"url3","user4",
+                "pass",null,"projectDir","example.com","tools","externals");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("tfsMaterialName"));
+        assertThat(result instanceof CRTfsMaterial,is(true));
+        CRTfsMaterial tfsMaterial = (CRTfsMaterial)result;
+
+        assertThat(tfsMaterial.getUrl(),is("url3"));
+        assertThat(tfsMaterial.getUserName(),is("user4"));
+        assertThat(tfsMaterial.getPassword(),is("pass"));
+        assertNull(tfsMaterial.getEncryptedPassword());
+        assertThat(tfsMaterial.getName(),is("tfsMaterialName"));
+        assertThat(tfsMaterial.getFolder(), is("dir1"));
+        assertThat(tfsMaterial.getDomain(), is("example.com"));
+        assertThat(tfsMaterial.getProjectPath(), is("projectDir"));
+        assertThat(tfsMaterial.getFilter(),hasItem("tools"));
+        assertThat(tfsMaterial.getFilter(),hasItem("externals"));
+    }
+    @Test
+    public void shouldMigrateTfsMaterial_WithEncryptedPassword()
+    {
+        CRTfsMaterial_1 scmMaterial = new CRTfsMaterial_1(
+                "tfsMaterialName", "dir1", false,"url3","user4",
+                "pass",null,"projectDir","example.com","tools","externals");
+        scmMaterial.setPassword(null);
+        scmMaterial.setEncryptedPassword("127g736gfr");
+
+        CRMaterial result = migration.migrate(scmMaterial);
+        assertThat(result.getName(),is("tfsMaterialName"));
+        assertThat(result instanceof CRTfsMaterial,is(true));
+        CRTfsMaterial tfsMaterial = (CRTfsMaterial)result;
+
+        assertThat(tfsMaterial.getUrl(),is("url3"));
+        assertThat(tfsMaterial.getUserName(),is("user4"));
+        assertThat(tfsMaterial.getEncryptedPassword(),is("127g736gfr"));
+        assertNull(tfsMaterial.getPassword());
+        assertThat(tfsMaterial.getName(), is("tfsMaterialName"));
+        assertThat(tfsMaterial.getFolder(), is("dir1"));
+        assertThat(tfsMaterial.getDomain(), is("example.com"));
+        assertThat(tfsMaterial.getProjectPath(), is("projectDir"));
+        assertThat(tfsMaterial.getFilter(),hasItem("tools"));
+        assertThat(tfsMaterial.getFilter(),hasItem("externals"));
+    }
+
 }
