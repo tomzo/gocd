@@ -3,8 +3,13 @@ package com.thoughtworks.go.plugin.access.configrepo.migration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRExecTask;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRTask;
 import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
 import com.thoughtworks.go.plugin.configrepo.material.*;
+import com.thoughtworks.go.plugin.configrepo.tasks.CRExecTask_1;
+import com.thoughtworks.go.plugin.configrepo.tasks.CRRunIf_1;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -278,6 +283,24 @@ public class Migration_1Test {
         assertThat(tfsMaterial.getProjectPath(), is("projectDir"));
         assertThat(tfsMaterial.getFilter(),hasItem("tools"));
         assertThat(tfsMaterial.getFilter(),hasItem("externals"));
+    }
+
+
+    @Test
+    public void shouldMigrateExecTask()
+    {
+        CRExecTask_1 crExecTask_1 =  new CRExecTask_1("rake","dir",120L, CRRunIf_1.any, new CRExecTask_1("cleanup"),"-f","Rakefile.rb");
+        CRTask result = migration.migrate(crExecTask_1);
+        assertThat(result instanceof CRExecTask,is(true));
+        CRExecTask crExecTask = (CRExecTask)result;
+
+        assertThat(crExecTask.getCommand(),is("rake"));
+        assertThat(crExecTask.getWorkingDirectory(),is("dir"));
+        assertThat(crExecTask.getTimeout(),is(120L));
+        assertThat(crExecTask.getRunIf(),is(CRRunIf.any));
+        assertThat(((CRExecTask)crExecTask.getOnCancel()).getCommand(),is("cleanup"));
+        assertThat(crExecTask.getArgs(),hasItem("-f"));
+        assertThat(crExecTask.getArgs(),hasItem("Rakefile.rb"));
     }
 
 }

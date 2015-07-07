@@ -8,4 +8,8 @@ import java.util.Collection;
 public class CRPluggableTask extends CRTask {
     private CRPluginConfiguration pluginConfiguration ;
     private Collection<CRConfiguration> configuration ;
+
+    public CRPluggableTask(CRRunIf runIf, CRTask onCancel) {
+        super(runIf, onCancel);
+    }
 }

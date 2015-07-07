@@ -7,4 +7,8 @@ public class CRFetchArtifactTask extends CRTask  {
     private String srcfile;
     private String srcdir;
     private String dest;
+
+    public CRFetchArtifactTask(CRRunIf runIf, CRTask onCancel) {
+        super(runIf, onCancel);
+    }
 }

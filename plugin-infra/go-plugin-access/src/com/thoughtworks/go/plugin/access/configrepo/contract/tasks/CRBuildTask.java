@@ -5,4 +5,8 @@ public class CRBuildTask extends CRTask {
     private String target;
     private String workingDirectory;
     private CRBuildFramework type;
+
+    public CRBuildTask(CRRunIf runIf, CRTask onCancel) {
+        super(runIf, onCancel);
+    }
 }
