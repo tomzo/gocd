@@ -8,6 +8,7 @@ import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
 import com.thoughtworks.go.plugin.configrepo.material.*;
 import com.thoughtworks.go.plugin.configrepo.tasks.CRBuildTask_1;
 import com.thoughtworks.go.plugin.configrepo.tasks.CRExecTask_1;
+import com.thoughtworks.go.plugin.configrepo.tasks.CRFetchArtifactTask_1;
 import com.thoughtworks.go.plugin.configrepo.tasks.CRRunIf_1;
 import org.junit.Before;
 import org.junit.Test;
@@ -368,6 +369,33 @@ public class Migration_1Test {
         assertThat(crBuildTask.getNantPath(),is("path"));
 
         assertThat(crBuildTask.getType(),is(CRBuildFramework.nant));
+    }
+
+    @Test
+    public void shouldMigrateFetchTask()
+    {
+        CRFetchArtifactTask_1 crFetchArtifactTask_1 = new CRFetchArtifactTask_1("build","buildjob","bin");
+        crFetchArtifactTask_1.setPipelineName("upstream");
+        crFetchArtifactTask_1.setDestination("dest");
+        crFetchArtifactTask_1.setSourceIsDirectory(true);
+
+        crFetchArtifactTask_1.setRunIf(CRRunIf_1.any);
+        crFetchArtifactTask_1.setOnCancel(new CRExecTask_1("cleanup"));
+
+        CRTask result = migration.migrate(crFetchArtifactTask_1);
+        assertThat(result instanceof CRFetchArtifactTask,is(true));
+
+        CRFetchArtifactTask crFetchArtifactTask = (CRFetchArtifactTask)result;
+
+        assertThat(crFetchArtifactTask.getRunIf(),is(CRRunIf.any));
+        assertThat(((CRExecTask)crFetchArtifactTask.getOnCancel()).getCommand(),is("cleanup"));
+
+        assertThat(crFetchArtifactTask.getPipelineName(),is("upstream"));
+        assertThat(crFetchArtifactTask.getStage(),is("build"));
+        assertThat(crFetchArtifactTask.getJob(),is("buildjob"));
+        assertThat(crFetchArtifactTask.getSource(),is("bin"));
+        assertThat(crFetchArtifactTask.getDestination(),is("dest"));
+        assertThat(crFetchArtifactTask.sourceIsDirectory(),is(true));
     }
 
 }

@@ -218,6 +218,17 @@ public class Migration_1 {
                         crNantTask_1.getTarget(),
                         crNantTask_1.getWorkingDirectory(),
                         crNantTask_1.getNantPath());
+            case CRFetchArtifactTask_1.TYPE_NAME:
+                CRFetchArtifactTask_1 crFetchArtifactTask_1 = (CRFetchArtifactTask_1)crTask_1;
+                return new CRFetchArtifactTask(
+                        migrate(crFetchArtifactTask_1.getRunIf()),
+                        crFetchArtifactTask_1.getOnCancel() != null ? migrate(crFetchArtifactTask_1.getOnCancel()) : null,
+                        crFetchArtifactTask_1.getPipelineName(),
+                        crFetchArtifactTask_1.getStage(),
+                        crFetchArtifactTask_1.getJob(),
+                        crFetchArtifactTask_1.getSource(),
+                        crFetchArtifactTask_1.getDestination(),
+                        crFetchArtifactTask_1.sourceIsDirectory());
 
             default:
                 throw new CRMigrationException(
