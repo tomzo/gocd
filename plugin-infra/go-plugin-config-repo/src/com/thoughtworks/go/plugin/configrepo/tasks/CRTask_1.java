@@ -1,6 +1,8 @@
 package com.thoughtworks.go.plugin.configrepo.tasks;
 
 import com.thoughtworks.go.plugin.configrepo.CRBase;
+import com.thoughtworks.go.plugin.configrepo.ErrorCollection;
+import org.apache.commons.lang.StringUtils;
 
 public abstract class CRTask_1 extends CRBase {
     private String type;
@@ -17,6 +19,12 @@ public abstract class CRTask_1 extends CRBase {
         this.type = type;
         this.runIf = runIf;
         this.onCancel = onCancel;
+    }
+
+    public void validateType(ErrorCollection errors) {
+        if (StringUtils.isBlank(type)) {
+            errors.add(this, "Task must have specified type");
+        }
     }
 
     public CRRunIf_1 getRunIf() {

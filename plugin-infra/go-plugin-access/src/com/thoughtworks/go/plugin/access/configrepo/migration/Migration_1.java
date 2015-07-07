@@ -3,16 +3,12 @@ package com.thoughtworks.go.plugin.access.configrepo.migration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPartialConfig;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRExecTask;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRTask;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.plugin.configrepo.CREnvironmentVariable_1;
 import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
 import com.thoughtworks.go.plugin.configrepo.CRPartialConfig_1;
 import com.thoughtworks.go.plugin.configrepo.material.*;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRExecTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRRunIf_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRTask_1;
+import com.thoughtworks.go.plugin.configrepo.tasks.*;
 
 /**
  * Migrates configuration from 1.0 to current extension contract.
@@ -183,13 +179,13 @@ public class Migration_1 {
 
     }
 
-    public CRTask migrate(CRTask_1 crExecTask_1) {
-        String typeName = crExecTask_1.typeName();
+    public CRTask migrate(CRTask_1 crTask_1) {
+        String typeName = crTask_1.typeName();
         if(typeName == null)
             throw new CRMigrationException("task is missing type");
         switch (typeName) {
             case CRExecTask_1.TYPE_NAME:
-                CRExecTask_1 execTask_1 = (CRExecTask_1) crExecTask_1;
+                CRExecTask_1 execTask_1 = (CRExecTask_1) crTask_1;
                 return new CRExecTask(
                         migrate(execTask_1.getRunIf()),
                         execTask_1.getOnCancel() != null ?  migrate(execTask_1.getOnCancel()) : null,
@@ -197,6 +193,32 @@ public class Migration_1 {
                         execTask_1.getWorkingDirectory(),
                         execTask_1.getTimeout(),
                         execTask_1.getArgs());
+            case CRBuildTask_1.RAKE_TYPE_NAME:
+                CRBuildTask_1 crRakeTask_1 = (CRBuildTask_1)crTask_1;
+                return CRBuildTask.rake(
+                        migrate(crRakeTask_1.getRunIf()),
+                        crRakeTask_1.getOnCancel() != null ? migrate(crRakeTask_1.getOnCancel()) : null,
+                        crRakeTask_1.getBuildFile(),
+                        crRakeTask_1.getTarget(),
+                        crRakeTask_1.getWorkingDirectory());
+            case CRBuildTask_1.ANT_TYPE_NAME:
+                CRBuildTask_1 crAntTask_1 = (CRBuildTask_1)crTask_1;
+                return CRBuildTask.ant(
+                        migrate(crAntTask_1.getRunIf()),
+                        crAntTask_1.getOnCancel() != null ? migrate(crAntTask_1.getOnCancel()) : null,
+                        crAntTask_1.getBuildFile(),
+                        crAntTask_1.getTarget(),
+                        crAntTask_1.getWorkingDirectory());
+            case CRBuildTask_1.NANT_TYPE_NAME:
+                CRNantTask_1 crNantTask_1 = (CRNantTask_1)crTask_1;
+                return new CRNantTask(
+                        migrate(crNantTask_1.getRunIf()),
+                        crNantTask_1.getOnCancel() != null ? migrate(crNantTask_1.getOnCancel()) : null,
+                        crNantTask_1.getBuildFile(),
+                        crNantTask_1.getTarget(),
+                        crNantTask_1.getWorkingDirectory(),
+                        crNantTask_1.getNantPath());
+
             default:
                 throw new CRMigrationException(
                         String.format("Invalid or unknown task type %s",typeName));
