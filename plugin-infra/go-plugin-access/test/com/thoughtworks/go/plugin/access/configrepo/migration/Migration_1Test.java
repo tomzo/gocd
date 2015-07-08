@@ -3,10 +3,10 @@ package com.thoughtworks.go.plugin.access.configrepo.migration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRJob;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
-import com.thoughtworks.go.plugin.configrepo.CRConfigurationProperty_1;
-import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
+import com.thoughtworks.go.plugin.configrepo.*;
 import com.thoughtworks.go.plugin.configrepo.material.*;
 import com.thoughtworks.go.plugin.configrepo.tasks.*;
 import org.junit.Before;
@@ -426,6 +426,55 @@ public class Migration_1Test {
         assertThat(configuration.size(),is(3));
 
         assertThat(crPluggableTask.getPropertyByKey("Url").getValue(),is("http://www.google.com"));
+    }
+
+    @Test
+    public void shouldMigrateJob()
+    {
+        CRJob_1 crJob_1 = new CRJob_1("build",
+                new CRFetchArtifactTask_1("build","buildjob","bin"),
+                CRBuildTask_1.nant("build.xml", "build", "src/tasks", "path"));
+        crJob_1.addEnvironmentVariable("key1","value1");
+        crJob_1.addResource("linux");
+        crJob_1.addTab(new CRTab_1("test","results.xml"));
+        crJob_1.addProperty(new CRPropertyGenerator_1("perf","test.xml",
+                "substring-before(//report/data/all/coverage[starts-with(@type,'class')]/@value, '%')"));
+        crJob_1.setRunOnAllAgents(true);
+        crJob_1.setRunInstanceCount(5);
+        crJob_1.setTimeout(100);
+
+        CRJob result = migration.migrate(crJob_1);
+        assertThat(result instanceof CRJob,is(true));
+
+        assertThat(result.getTasks().size(),is(2));
+        assertThat(result.getEnvironmentVariable("key1").getValue(),is("value1"));
+        assertThat(result.getResources(),hasItem("linux"));
+        assertThat(result.getTab("test").getPath(),is("results.xml"));
+        assertThat(result.getPropertyGenerator("perf").getSrc(),is("test.xml"));
+        assertThat(result.isRunOnAllAgents(),is(true));
+        assertThat(result.getRunInstanceCount(),is(5));
+        assertThat(result.getTimeout(),is(100));
+
+    }
+    @Test
+    public void shouldMigrateJobWithNulls()
+    {
+        CRJob_1 crJob_1 = new CRJob_1("build");
+        crJob_1.setTasks(null);
+        crJob_1.setEnvironmentVariables(null);
+        crJob_1.setResources(null);
+        crJob_1.setTabs(null);
+        crJob_1.setArtifactPropertiesGenerators(null);
+
+        CRJob result = migration.migrate(crJob_1);
+        assertThat(result instanceof CRJob,is(true));
+
+        assertThat(result.getTasks().size(),is(0));
+        assertThat(result.getEnvironmentVariables().size(),is(0));
+        assertThat(result.getResources().size(),is(0));
+        assertThat(result.getTabs().size(),is(0));
+        assertThat(result.getArtifactPropertiesGenerators().size(),is(0));
+
     }
 
 }
