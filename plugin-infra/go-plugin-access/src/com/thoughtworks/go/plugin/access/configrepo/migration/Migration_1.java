@@ -1,14 +1,17 @@
 package com.thoughtworks.go.plugin.access.configrepo.migration;
 
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPartialConfig;
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
-import com.thoughtworks.go.plugin.configrepo.CREnvironmentVariable_1;
-import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
-import com.thoughtworks.go.plugin.configrepo.CRPartialConfig_1;
+import com.thoughtworks.go.plugin.configrepo.*;
 import com.thoughtworks.go.plugin.configrepo.material.*;
 import com.thoughtworks.go.plugin.configrepo.tasks.*;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * Migrates configuration from 1.0 to current extension contract.
@@ -229,12 +232,35 @@ public class Migration_1 {
                         crFetchArtifactTask_1.getSource(),
                         crFetchArtifactTask_1.getDestination(),
                         crFetchArtifactTask_1.sourceIsDirectory());
+            case CRPluggableTask_1.TYPE_NAME:
+                CRPluggableTask_1 crPluggableTask_1 = (CRPluggableTask_1)crTask_1;
+                return new CRPluggableTask(
+                        migrate(crPluggableTask_1.getRunIf()),
+                        crPluggableTask_1.getOnCancel() != null ? migrate(crPluggableTask_1.getOnCancel()) : null,
+                        migrate(crPluggableTask_1.getPluginConfiguration()),
+                        crPluggableTask_1.getConfiguration() != null ? migrate(crPluggableTask_1.getConfiguration()) : null);
 
             default:
                 throw new CRMigrationException(
                         String.format("Invalid or unknown task type %s",typeName));
         }
 
+    }
+
+    private Collection<CRConfigurationProperty> migrate(Collection<CRConfigurationProperty_1> configuration) {
+        ArrayList<CRConfigurationProperty> configs = new ArrayList<>();
+        for(CRConfigurationProperty_1 p : configuration)
+        {
+            configs.add(new CRConfigurationProperty(p.getKey(),p.getValue(),p.getEncryptedValue()));
+        }
+        return  configs;
+    }
+
+    public CRPluginConfiguration migrate(CRPluginConfiguration_1 pluginConfiguration) {
+        if(pluginConfiguration == null)
+            throw new CRMigrationException(
+                    String.format("Plugin configuration cannot be null"));
+        return new CRPluginConfiguration(pluginConfiguration.getId(),pluginConfiguration.getVersion());
     }
 
     private CRRunIf migrate(CRRunIf_1 runIf) {

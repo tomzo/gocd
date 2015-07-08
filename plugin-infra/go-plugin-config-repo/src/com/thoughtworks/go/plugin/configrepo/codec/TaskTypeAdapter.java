@@ -1,10 +1,7 @@
 package com.thoughtworks.go.plugin.configrepo.codec;
 
 import com.google.gson.*;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRBuildTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRExecTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRNantTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRTask_1;
+import com.thoughtworks.go.plugin.configrepo.tasks.*;
 
 import java.lang.reflect.Type;
 
@@ -29,6 +26,8 @@ public class TaskTypeAdapter implements JsonDeserializer<CRTask_1> {
             return CRBuildTask_1.class;
         if(typeName.equals(CRBuildTask_1.NANT_TYPE_NAME))
             return CRNantTask_1.class;
+        if(typeName.equals(CRPluggableTask_1.TYPE_NAME))
+            return CRPluggableTask_1.class;
         else
             throw new JsonParseException(
                     String.format("Invalid or unknown material type '%s'",typeName));

@@ -1,17 +1,18 @@
 package com.thoughtworks.go.plugin.access.configrepo.migration;
 
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
+import com.thoughtworks.go.plugin.configrepo.CRConfigurationProperty_1;
 import com.thoughtworks.go.plugin.configrepo.CREnvironment_1;
 import com.thoughtworks.go.plugin.configrepo.material.*;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRBuildTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRExecTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRFetchArtifactTask_1;
-import com.thoughtworks.go.plugin.configrepo.tasks.CRRunIf_1;
+import com.thoughtworks.go.plugin.configrepo.tasks.*;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Collection;
 
 import static junit.framework.TestCase.assertNull;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -396,6 +397,35 @@ public class Migration_1Test {
         assertThat(crFetchArtifactTask.getSource(),is("bin"));
         assertThat(crFetchArtifactTask.getDestination(),is("dest"));
         assertThat(crFetchArtifactTask.sourceIsDirectory(),is(true));
+    }
+
+    @Test
+    public void shouldMigratePluggableTask()
+    {
+        CRPluggableTask_1 crPluggableTask_1 = new CRPluggableTask_1("curl.task.plugin","1",
+                new CRConfigurationProperty_1("Url","http://www.google.com"),
+                new CRConfigurationProperty_1("SecureConnection","no"),
+                new CRConfigurationProperty_1("RequestType","no")
+        );
+
+        crPluggableTask_1.setRunIf(CRRunIf_1.any);
+        crPluggableTask_1.setOnCancel(new CRExecTask_1("cleanup"));
+
+        CRTask result = migration.migrate(crPluggableTask_1);
+        assertThat(result instanceof CRPluggableTask,is(true));
+
+        CRPluggableTask crPluggableTask = (CRPluggableTask)result;
+
+        assertThat(crPluggableTask.getRunIf(),is(CRRunIf.any));
+        assertThat(((CRExecTask)crPluggableTask.getOnCancel()).getCommand(),is("cleanup"));
+
+        assertThat(crPluggableTask.getPluginConfiguration().getId(),is("curl.task.plugin"));
+        assertThat(crPluggableTask.getPluginConfiguration().getVersion(),is("1"));
+
+        Collection<CRConfigurationProperty> configuration = crPluggableTask.getConfiguration();
+        assertThat(configuration.size(),is(3));
+
+        assertThat(crPluggableTask.getPropertyByKey("Url").getValue(),is("http://www.google.com"));
     }
 
 }
