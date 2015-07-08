@@ -1,9 +1,6 @@
 package com.thoughtworks.go.plugin.access.configrepo.migration;
 
-import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
-import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
-import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
-import com.thoughtworks.go.plugin.access.configrepo.contract.CRJob;
+import com.thoughtworks.go.plugin.access.configrepo.contract.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.plugin.configrepo.*;
@@ -474,6 +471,46 @@ public class Migration_1Test {
         assertThat(result.getResources().size(),is(0));
         assertThat(result.getTabs().size(),is(0));
         assertThat(result.getArtifactPropertiesGenerators().size(),is(0));
+
+    }
+
+    @Test
+    public void shouldMigrateApproval()
+    {
+        CRApproval_1 approval_1 = new CRApproval_1("manual");
+        approval_1.addAuthorizedUser("user1");
+        approval_1.addAuthorizedRole("tester");
+
+        CRApproval result = migration.migrate(approval_1);
+        assertThat(result.getType(),is(CRApprovalCondition.manual));
+        assertThat(result.getAuthorizedRoles(),hasItem("tester"));
+        assertThat(result.getAuthorizedUsers(),hasItem("user1"));
+
+    }
+    @Test
+    public void shouldMigrateApprovalWithNulls()
+    {
+        CRApproval_1 approval_1 = new CRApproval_1("manual");
+        approval_1.setAuthorizedRoles(null);
+        approval_1.setAuthorizedUsers(null);
+
+        CRApproval result = migration.migrate(approval_1);
+        assertThat(result.getType(),is(CRApprovalCondition.manual));
+        assertThat(result.getAuthorizedRoles().isEmpty(),is(true));
+        assertThat(result.getAuthorizedUsers().isEmpty(),is(true));
+
+    }
+    @Test
+    public void shouldMigrateApprovalWithNoType()
+    {
+        CRApproval_1 approval_1 = new CRApproval_1(null);
+        approval_1.setAuthorizedRoles(null);
+        approval_1.setAuthorizedUsers(null);
+
+        CRApproval result = migration.migrate(approval_1);
+        assertThat(result.getType(),is(CRApprovalCondition.success));
+        assertThat(result.getAuthorizedRoles().isEmpty(),is(true));
+        assertThat(result.getAuthorizedUsers().isEmpty(),is(true));
 
     }
 

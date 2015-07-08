@@ -360,4 +360,11 @@ public class Migration_1 {
     public CREnvironmentVariable migrate(CREnvironmentVariable_1 var_1) {
         return new CREnvironmentVariable(var_1.getName(), var_1.getValue(), var_1.getEncryptedValue());
     }
+
+    public CRApproval migrate(CRApproval_1 approval_1) {
+        return new CRApproval(
+                approval_1.getType() != null ? CRApprovalCondition.valueOf(approval_1.getType()) : CRApprovalCondition.success,
+                approval_1.getAuthorizedRoles() != null ? approval_1.getAuthorizedRoles() : new ArrayList<String>(),
+                approval_1.getAuthorizedUsers() != null ? approval_1.getAuthorizedUsers() : new ArrayList<String>());
+    }
 }
