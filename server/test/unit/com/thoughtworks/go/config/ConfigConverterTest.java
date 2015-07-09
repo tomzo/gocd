@@ -151,5 +151,37 @@ public class ConfigConverterTest {
         assertThat(result.workingDirectory(),is("work"));
         assertThat(result.getTimeout(),is(120L));
     }
+    @Test
+    public void shouldConvertFetchArtifactTaskWhenSourceIsDirectory()
+    {
+        CRFetchArtifactTask crFetchArtifactTask = new CRFetchArtifactTask(CRRunIf.failed,null,
+                "upstream","stage","job","src","dest",true);
+
+        FetchTask result = (FetchTask)configConverter.toAbstractTask(crFetchArtifactTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
+        assertThat(result.getDest(),is("dest"));
+        assertThat(result.getJob().toLower(),is("job"));
+        assertThat(result.getPipelineName().toLower(),is("upstream"));
+        assertThat(result.getSrc(),is("src"));
+        assertNull(result.getSrcfile());
+        assertThat(result.isSourceAFile(), is(false));
+    }
+    @Test
+    public void shouldConvertFetchArtifactTaskWhenSourceIsFile()
+    {
+        CRFetchArtifactTask crFetchArtifactTask = new CRFetchArtifactTask(CRRunIf.failed,null,
+                "upstream","stage","job","src","dest",false);
+
+        FetchTask result = (FetchTask)configConverter.toAbstractTask(crFetchArtifactTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
+        assertThat(result.getDest(),is("dest"));
+        assertThat(result.getJob().toLower(),is("job"));
+        assertThat(result.getPipelineName().toLower(),is("upstream"));
+        assertThat(result.getSrc(),is("src"));
+        assertNull(result.getSrcdir());
+        assertThat(result.isSourceAFile(),is(true));
+    }
 
 }

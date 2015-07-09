@@ -113,15 +113,35 @@ public class ConfigConverter {
         {
             return toExecTask((CRExecTask)crTask);
         }
+        else if(crTask instanceof CRFetchArtifactTask)
+        {
+            return toFetchTask((CRFetchArtifactTask)crTask);
+        }
         else
             throw new RuntimeException(
                     String.format("unknown type of task '%s'",crTask));
     }
 
+    public FetchTask toFetchTask(CRFetchArtifactTask crTask) {
+        FetchTask fetchTask = new FetchTask(
+                new CaseInsensitiveString(crTask.getPipelineName()),
+                new CaseInsensitiveString(crTask.getStage()),
+                new CaseInsensitiveString(crTask.getJob()),
+                crTask.getSource(),
+                crTask.getDestination());
+
+        if(crTask.sourceIsDirectory()) {
+            fetchTask.setSrcdir(crTask.getSource());
+            fetchTask.setSrcfile(null);
+        }
+        setCommonTaskMembers(fetchTask,crTask);
+        return fetchTask;
+    }
+
     public ExecTask toExecTask(CRExecTask crTask) {
         ExecTask execTask = new ExecTask(crTask.getCommand(), toArgList(crTask.getArgs()), crTask.getWorkingDirectory());
         execTask.setTimeout(crTask.getTimeout());
-        setCommonTaskMembers(execTask,crTask);
+        setCommonTaskMembers(execTask, crTask);
         return execTask;
     }
 
