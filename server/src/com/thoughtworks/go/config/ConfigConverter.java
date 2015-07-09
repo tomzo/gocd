@@ -3,6 +3,8 @@ package com.thoughtworks.go.config;
 import com.thoughtworks.go.config.BasicEnvironmentConfig;
 import com.thoughtworks.go.config.CaseInsensitiveString;
 import com.thoughtworks.go.config.EnvironmentConfig;
+import com.thoughtworks.go.config.materials.AbstractMaterialConfig;
+import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
@@ -11,7 +13,10 @@ import com.thoughtworks.go.domain.config.Arguments;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.ConfigurationProperty;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
+import com.thoughtworks.go.domain.materials.MaterialConfig;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRMaterial;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 
@@ -197,6 +202,29 @@ public class ConfigConverter {
 
     public PluginConfiguration toPluginConfiguration(CRPluginConfiguration pluginConfiguration) {
         return new PluginConfiguration(pluginConfiguration.getId(),pluginConfiguration.getVersion());
+    }
+
+    public DependencyMaterialConfig toDependencyMaterialConfig(CRDependencyMaterial crDependencyMaterial) {
+        DependencyMaterialConfig dependencyMaterialConfig = new DependencyMaterialConfig(
+                new CaseInsensitiveString(crDependencyMaterial.getPipelineName()),
+                new CaseInsensitiveString(crDependencyMaterial.getStageName()));
+        setCommonMaterialMembers(dependencyMaterialConfig,crDependencyMaterial);
+        return dependencyMaterialConfig;
+    }
+
+    private void setCommonMaterialMembers(AbstractMaterialConfig materialConfig, CRMaterial crMaterial) {
+        materialConfig.setName(new CaseInsensitiveString(crMaterial.getName()));
+    }
+
+    public MaterialConfig toMaterialConfig(CRMaterial crMaterial) {
+        if(crMaterial == null)
+            throw new ConfigConvertionException("material cannot be null");
+
+        if(crMaterial instanceof CRDependencyMaterial)
+            return toDependencyMaterialConfig((CRDependencyMaterial)crMaterial);
+        else
+            throw new ConfigConvertionException(
+                    String.format("unknown material type '%s'",crMaterial));
     }
 
     //TODO #1133 convert each config element

@@ -1,11 +1,13 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
@@ -182,6 +184,18 @@ public class ConfigConverterTest {
         assertThat(result.getSrc(),is("src"));
         assertNull(result.getSrcdir());
         assertThat(result.isSourceAFile(),is(true));
+    }
+
+    @Test
+    public void shouldConvertDependencyMaterial()
+    {
+        CRDependencyMaterial crDependencyMaterial = new CRDependencyMaterial("name","pipe","stage");
+        DependencyMaterialConfig dependencyMaterialConfig =
+                (DependencyMaterialConfig)configConverter.toMaterialConfig(crDependencyMaterial);
+
+        assertThat(dependencyMaterialConfig.getName().toLower(),is("name"));
+        assertThat(dependencyMaterialConfig.getPipelineName().toLower(),is("pipe"));
+        assertThat(dependencyMaterialConfig.getStageName().toLower(),is("stage"));
     }
 
 }
