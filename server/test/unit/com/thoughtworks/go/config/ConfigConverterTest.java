@@ -15,10 +15,13 @@ import org.jruby.ant.Rake;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsCollectionContaining.hasItem;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -133,6 +136,20 @@ public class ConfigConverterTest {
         assertThat(result.getBuildFile(),is("nant"));
         assertThat(result.getTarget(),is("build"));
         assertThat(result.workingDirectory(),is("src"));
+    }
+
+    @Test
+    public void shouldConvertExecTask()
+    {
+        CRExecTask crExecTask = new CRExecTask(CRRunIf.failed,null,"bash","work",120L, Arrays.asList("1","2"));
+        ExecTask result = (ExecTask)configConverter.toAbstractTask(crExecTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
+        assertThat(result.command(),is("bash"));
+        assertThat(result.getArgList(),hasItem(new Argument("1")));
+        assertThat(result.getArgList(),hasItem(new Argument("2")));
+        assertThat(result.workingDirectory(),is("work"));
+        assertThat(result.getTimeout(),is(120L));
     }
 
 }

@@ -7,17 +7,16 @@ import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.domain.Task;
+import com.thoughtworks.go.domain.config.Arguments;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.ConfigurationProperty;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildTask;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRPluggableTask;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRTask;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Helper to transform config repo classes to config-api classes
@@ -110,9 +109,29 @@ public class ConfigConverter {
         else if(crTask instanceof CRBuildTask) {
             return toBuildTask((CRBuildTask)crTask);
         }
+        else if(crTask instanceof CRExecTask)
+        {
+            return toExecTask((CRExecTask)crTask);
+        }
         else
             throw new RuntimeException(
                     String.format("unknown type of task '%s'",crTask));
+    }
+
+    public ExecTask toExecTask(CRExecTask crTask) {
+        ExecTask execTask = new ExecTask(crTask.getCommand(), toArgList(crTask.getArgs()), crTask.getWorkingDirectory());
+        execTask.setTimeout(crTask.getTimeout());
+        setCommonTaskMembers(execTask,crTask);
+        return execTask;
+    }
+
+    private Arguments toArgList(List<String> args) {
+        Arguments arguments = new Arguments();
+        for(String arg : args)
+        {
+            arguments.add(new Argument(arg));
+        }
+        return arguments;
     }
 
     public BuildTask toBuildTask(CRBuildTask crBuildTask) {
