@@ -6,12 +6,15 @@ import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProp
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildFramework;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildTask;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRPluggableTask;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.hamcrest.core.Is;
+import org.jruby.ant.Rake;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,12 +84,24 @@ public class ConfigConverterTest {
         configs.add(new CRConfigurationProperty("k","m",null));
         CRPluggableTask pluggableTask = new CRPluggableTask(CRRunIf.any,null,
                 new CRPluginConfiguration("myplugin","1"),configs);
-        PluggableTask result = configConverter.toPluggableTask(pluggableTask);
+        PluggableTask result = (PluggableTask)configConverter.toAbstractTask(pluggableTask);
 
         assertThat(result.getPluginConfiguration().getId(),is("myplugin"));
         assertThat(result.getPluginConfiguration().getVersion(),is("1"));
         assertThat(result.getConfiguration().getProperty("k").getValue(),is("m"));
         assertThat(result.getConditions().first(), is(RunIfConfig.ANY));
+    }
+
+    @Test
+    public void shouldMigrateRakeTask()
+    {
+        CRBuildTask crBuildTask = new CRBuildTask(CRRunIf.failed,null,"Rakefile.rb","build","src", CRBuildFramework.rake);
+        RakeTask result = (RakeTask)configConverter.toAbstractTask(crBuildTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
+        assertThat(result.getBuildFile(),is("Rakefile.rb"));
+        assertThat(result.getTarget(),is("build"));
+        assertThat(result.workingDirectory(),is("src"));
     }
 
 }

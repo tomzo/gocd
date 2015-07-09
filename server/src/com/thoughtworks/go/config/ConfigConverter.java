@@ -11,6 +11,7 @@ import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.ConfigurationProperty;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildTask;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRPluggableTask;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRTask;
@@ -106,10 +107,36 @@ public class ConfigConverter {
 
         if(crTask instanceof CRPluggableTask)
             return toPluggableTask((CRPluggableTask)crTask);
+        else if(crTask instanceof CRBuildTask) {
+            return toBuildTask((CRBuildTask)crTask);
+        }
         else
             throw new RuntimeException(
                     String.format("unknown type of task '%s'",crTask));
     }
+
+    public BuildTask toBuildTask(CRBuildTask crBuildTask) {
+        BuildTask buildTask;
+        switch (crBuildTask.getType())
+        {
+            case rake:
+                buildTask = new RakeTask();
+                break;
+            default:
+                throw new RuntimeException(
+                        String.format("unknown type of build task '%s'",crBuildTask.getType()));
+        }
+        setCommonBuildTaskMembers(buildTask,crBuildTask);
+        setCommonTaskMembers(buildTask,crBuildTask);
+        return buildTask;
+    }
+
+    private void setCommonBuildTaskMembers(BuildTask buildTask, CRBuildTask crBuildTask) {
+        buildTask.buildFile = crBuildTask.getBuildFile();
+        buildTask.target = crBuildTask.getTarget();
+        buildTask.workingDirectory = crBuildTask.getWorkingDirectory();
+    }
+
 
     private Configuration toConfiguration(Collection<CRConfigurationProperty> properties) {
         Configuration configuration = new Configuration();
