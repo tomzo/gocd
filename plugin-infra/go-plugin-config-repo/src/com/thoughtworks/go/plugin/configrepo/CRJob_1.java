@@ -255,4 +255,12 @@ public class CRJob_1 extends CRBase {
     public void addProperty(CRPropertyGenerator_1 property) {
         this.artifactPropertiesGenerators.add(property);
     }
+
+    public String validateNameUniqueness(HashSet<String> names) {
+        if(names.contains(this.getName()))
+            return String.format("Job %s is defined more than once",this.getName());
+        else
+            names.add(this.getName());
+        return null;
+    }
 }

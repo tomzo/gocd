@@ -514,4 +514,37 @@ public class Migration_1Test {
 
     }
 
+    @Test
+    public void shouldMigrateStage()
+    {
+        CRJob_1 crJob_1 = new CRJob_1("buildjob",
+                new CRFetchArtifactTask_1("build","buildjob","bin"));
+
+        CRStage_1 stage_1 = new CRStage_1("build",crJob_1);
+
+        stage_1.addEnvironmentVariable("key1", "value1");
+
+        CRApproval_1 approval_1 = new CRApproval_1("manual");
+        approval_1.addAuthorizedUser("user1");
+        approval_1.addAuthorizedRole("tester");
+        stage_1.setApproval(approval_1);
+
+        stage_1.setArtifactCleanupProhibited(true);
+        stage_1.setCleanWorkingDir(true);
+        stage_1.setFetchMaterials(true);
+
+        CRStage result = migration.migrate(stage_1);
+
+        CRApproval app = result.getApproval();
+        assertThat(app.getType(),is(CRApprovalCondition.manual));
+        assertThat(app.getAuthorizedRoles(),hasItem("tester"));
+        assertThat(app.getAuthorizedUsers(),hasItem("user1"));
+
+        assertThat(stage_1.getName(),is("build"));
+        assertThat(stage_1.getJobs().size(),is(1));
+        assertThat(stage_1.isArtifactCleanupProhibited(),is(true));
+        assertThat(stage_1.isCleanWorkingDir(),is(true));
+        assertThat(stage_1.isFetchMaterials(),is(true));
+    }
+
 }

@@ -362,9 +362,33 @@ public class Migration_1 {
     }
 
     public CRApproval migrate(CRApproval_1 approval_1) {
+        if(approval_1 == null)
+            return new CRApproval(CRApprovalCondition.success,new ArrayList<String>(),new ArrayList<String>());
         return new CRApproval(
                 approval_1.getType() != null ? CRApprovalCondition.valueOf(approval_1.getType()) : CRApprovalCondition.success,
                 approval_1.getAuthorizedRoles() != null ? approval_1.getAuthorizedRoles() : new ArrayList<String>(),
                 approval_1.getAuthorizedUsers() != null ? approval_1.getAuthorizedUsers() : new ArrayList<String>());
+    }
+
+    public CRStage migrate(CRStage_1 stage_1) {
+        return new CRStage(stage_1.getName(),
+                stage_1.isFetchMaterials(),
+                stage_1.isArtifactCleanupProhibited(),
+                stage_1.isCleanWorkingDir(),
+                migrate(stage_1.getApproval()),
+                migrateEnvironmentVariables(stage_1.getEnvironmentVariables()),
+                migrateJobs(stage_1.getJobs()));
+    }
+
+    public Collection<CRJob> migrateJobs(Collection<CRJob_1> jobs1) {
+        List<CRJob> jobs = new ArrayList<>();
+        if(jobs1 == null || jobs1.isEmpty())
+            throw new CRMigrationException(
+                    String.format("Jobs cannot be empty or null"));
+        for(CRJob_1 job1 : jobs1)
+        {
+            jobs.add(migrate(job1));
+        }
+        return jobs;
     }
 }
