@@ -1,10 +1,17 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.pluggabletask.PluggableTask;
+import com.thoughtworks.go.domain.RunIfConfigs;
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
+import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRPluggableTask;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.hamcrest.core.Is;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,6 +72,21 @@ public class ConfigConverterTest {
         assertThat(environmentConfig.contains("pipe1"),is(true));
         assertThat(environmentConfig.hasVariable("key"),is(true));
         assertThat(environmentConfig.hasAgent("12"),is(true));
+    }
+
+    @Test
+    public void shouldMigratePluggableTask()
+    {
+        ArrayList<CRConfigurationProperty> configs = new ArrayList<>();
+        configs.add(new CRConfigurationProperty("k","m",null));
+        CRPluggableTask pluggableTask = new CRPluggableTask(CRRunIf.any,null,
+                new CRPluginConfiguration("myplugin","1"),configs);
+        PluggableTask result = configConverter.toPluggableTask(pluggableTask);
+
+        assertThat(result.getPluginConfiguration().getId(),is("myplugin"));
+        assertThat(result.getPluginConfiguration().getVersion(),is("1"));
+        assertThat(result.getConfiguration().getProperty("k").getValue(),is("m"));
+        assertThat(result.getConditions().first(), is(RunIfConfig.ANY));
     }
 
 }
