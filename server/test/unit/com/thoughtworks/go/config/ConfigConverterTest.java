@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -119,6 +121,18 @@ public class ConfigConverterTest {
 
         assertThat(result.cancelTask() instanceof RakeTask,is(true));
         assertRakeTask((RakeTask)result.cancelTask() );
+    }
+
+    @Test
+    public void shouldMigrateNantTask()
+    {
+        CRBuildTask crBuildTask = new CRNantTask(CRRunIf.passed,null,"nant","build","src", "path");
+        NantTask result = (NantTask)configConverter.toAbstractTask(crBuildTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.PASSED));
+        assertThat(result.getBuildFile(),is("nant"));
+        assertThat(result.getTarget(),is("build"));
+        assertThat(result.workingDirectory(),is("src"));
     }
 
 }

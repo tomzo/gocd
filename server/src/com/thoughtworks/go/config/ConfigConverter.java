@@ -125,6 +125,9 @@ public class ConfigConverter {
             case ant:
                 buildTask = new AntTask();
                 break;
+            case nant:
+                buildTask = new NantTask();
+                break;
             default:
                 throw new RuntimeException(
                         String.format("unknown type of build task '%s'",crBuildTask.getType()));
