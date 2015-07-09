@@ -122,6 +122,9 @@ public class ConfigConverter {
             case rake:
                 buildTask = new RakeTask();
                 break;
+            case ant:
+                buildTask = new AntTask();
+                break;
             default:
                 throw new RuntimeException(
                         String.format("unknown type of build task '%s'",crBuildTask.getType()));

@@ -6,10 +6,7 @@ import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProp
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildFramework;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRBuildTask;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRPluggableTask;
-import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.CRRunIf;
+import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -98,10 +95,30 @@ public class ConfigConverterTest {
         CRBuildTask crBuildTask = new CRBuildTask(CRRunIf.failed,null,"Rakefile.rb","build","src", CRBuildFramework.rake);
         RakeTask result = (RakeTask)configConverter.toAbstractTask(crBuildTask);
 
+        assertRakeTask(result);
+    }
+
+    private void assertRakeTask(RakeTask result) {
         assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
         assertThat(result.getBuildFile(),is("Rakefile.rb"));
         assertThat(result.getTarget(),is("build"));
         assertThat(result.workingDirectory(),is("src"));
+    }
+
+    @Test
+    public void shouldMigrateAntTask()
+    {
+        CRTask cancel = new CRBuildTask(CRRunIf.failed,null,"Rakefile.rb","build","src", CRBuildFramework.rake);
+        CRBuildTask crBuildTask = new CRBuildTask(CRRunIf.failed,cancel,"ant","build","src", CRBuildFramework.ant);
+        AntTask result = (AntTask)configConverter.toAbstractTask(crBuildTask);
+
+        assertThat(result.getConditions().first(), is(RunIfConfig.FAILED));
+        assertThat(result.getBuildFile(),is("ant"));
+        assertThat(result.getTarget(),is("build"));
+        assertThat(result.workingDirectory(),is("src"));
+
+        assertThat(result.cancelTask() instanceof RakeTask,is(true));
+        assertRakeTask((RakeTask)result.cancelTask() );
     }
 
 }
