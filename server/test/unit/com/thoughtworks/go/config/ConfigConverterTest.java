@@ -1,5 +1,7 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.materials.PluggableSCMMaterial;
+import com.thoughtworks.go.config.materials.PluggableSCMMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
@@ -8,6 +10,10 @@ import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
 import com.thoughtworks.go.config.materials.tfs.TfsMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
+import com.thoughtworks.go.domain.config.Configuration;
+import com.thoughtworks.go.domain.config.PluginConfiguration;
+import com.thoughtworks.go.domain.scm.SCM;
+import com.thoughtworks.go.domain.scm.SCMs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
@@ -41,11 +47,13 @@ public class ConfigConverterTest {
     private ConfigConverter configConverter;
     private GoCipher goCipher;
     private List<String> filter = new ArrayList<>();
+    private CachedFileGoConfig cachedFileGoConfig;
 
     @Before
     public void setUp() throws InvalidCipherTextException {
+        cachedFileGoConfig = mock(CachedFileGoConfig.class);
         goCipher = mock(GoCipher.class);
-        configConverter = new ConfigConverter(goCipher);
+        configConverter = new ConfigConverter(goCipher,cachedFileGoConfig);
         String encryptedText = "secret";
         when(goCipher.decrypt("encryptedvalue")).thenReturn(encryptedText);
         when(goCipher.encrypt("secret")).thenReturn("encryptedvalue");
@@ -331,7 +339,7 @@ public class ConfigConverterTest {
     public void shouldConvertTfsMaterialWhenEncryptedPassword()
     {
         CRTfsMaterial crTfsMaterial = CRTfsMaterial.withEncryptedPassword(
-                "name", "folder", false, filter, "url", "domain" ,"user", "encryptedvalue", "project");
+                "name", "folder", false, filter, "url", "domain", "user", "encryptedvalue", "project");
 
         TfsMaterialConfig tfsMaterialConfig =
                 (TfsMaterialConfig)configConverter.toMaterialConfig(crTfsMaterial);
@@ -345,6 +353,29 @@ public class ConfigConverterTest {
         assertThat(tfsMaterialConfig.getPassword(), is("secret"));
         assertThat(tfsMaterialConfig.getDomain(), is("domain"));
         assertThat(tfsMaterialConfig.getProjectPath(), is("project"));
+
+    }
+
+    @Test
+    public void shouldConvertPluggableScmMaterial()
+    {
+        SCM myscm = new SCM("scmid", new PluginConfiguration(), new Configuration());
+        SCMs scms = new SCMs(myscm);
+
+        BasicCruiseConfig cruiseConfig = new BasicCruiseConfig();
+        cruiseConfig.setSCMs(scms);
+        when(cachedFileGoConfig.currentConfig()).thenReturn(cruiseConfig);
+
+        CRPluggableScmMaterial crPluggableScmMaterial = new CRPluggableScmMaterial("name","scmid","directory",filter);
+
+        PluggableSCMMaterialConfig pluggableSCMMaterialConfig =
+                (PluggableSCMMaterialConfig)configConverter.toMaterialConfig(crPluggableScmMaterial);
+
+        assertThat(pluggableSCMMaterialConfig.getName().toLower(),is("name"));
+        assertThat(pluggableSCMMaterialConfig.getSCMConfig(),is(myscm));
+        assertThat(pluggableSCMMaterialConfig.getScmId(),is("scmid"));
+        assertThat(pluggableSCMMaterialConfig.getFolder(),is("directory"));
+        assertThat(pluggableSCMMaterialConfig.getFilterAsString(), is("filter"));
 
     }
 

@@ -1,9 +1,6 @@
 package com.thoughtworks.go.config;
 
-import com.thoughtworks.go.config.materials.AbstractMaterialConfig;
-import com.thoughtworks.go.config.materials.Filter;
-import com.thoughtworks.go.config.materials.IgnoredFiles;
-import com.thoughtworks.go.config.materials.ScmMaterialConfig;
+import com.thoughtworks.go.config.materials.*;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
@@ -17,6 +14,8 @@ import com.thoughtworks.go.domain.config.Arguments;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
+import com.thoughtworks.go.domain.scm.SCM;
+import com.thoughtworks.go.domain.scm.SCMs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
@@ -33,10 +32,12 @@ import java.util.List;
 public class ConfigConverter {
 
     private final GoCipher cipher;
+    private final CachedFileGoConfig cachedFileGoConfig;
 
-    public ConfigConverter(GoCipher goCipher)
+    public ConfigConverter(GoCipher goCipher,CachedFileGoConfig cachedFileGoConfig)
     {
         this.cipher = goCipher;
+        this.cachedFileGoConfig = cachedFileGoConfig;
     }
 
     public PartialConfig toPartialConfig(CRPartialConfig crPartialConfig) {
@@ -231,9 +232,31 @@ public class ConfigConverter {
             CRScmMaterial crScmMaterial = (CRScmMaterial)crMaterial;
             return toScmMaterialConfig(crScmMaterial);
         }
+        else if(crMaterial instanceof CRPluggableScmMaterial)
+        {
+            CRPluggableScmMaterial crPluggableScmMaterial = (CRPluggableScmMaterial)crMaterial;
+            return toPluggableScmMaterialConfig(crPluggableScmMaterial);
+        }
         else
             throw new ConfigConvertionException(
                     String.format("unknown material type '%s'",crMaterial));
+    }
+
+    private PluggableSCMMaterialConfig toPluggableScmMaterialConfig(CRPluggableScmMaterial crPluggableScmMaterial) {
+        SCMs scms = getSCMs();
+        String id = crPluggableScmMaterial.getScmId();
+        SCM scmConfig = scms.find(id);
+        if(scmConfig == null)
+            throw new ConfigConvertionException(
+                    String.format("Failed to find referenced scm '%s'",id));
+
+        return new PluggableSCMMaterialConfig(new CaseInsensitiveString(crPluggableScmMaterial.getName()),
+                scmConfig,crPluggableScmMaterial.getDirectory(),
+                toFilter(crPluggableScmMaterial.getFilter()));
+    }
+
+    private SCMs getSCMs() {
+        return this.cachedFileGoConfig.currentConfig().getSCMs();
     }
 
     private ScmMaterialConfig toScmMaterialConfig(CRScmMaterial crScmMaterial) {
@@ -319,13 +342,19 @@ public class ConfigConverter {
     }
 
     private Filter toFilter(CRScmMaterial crScmMaterial) {
+        List<String> filterList = crScmMaterial.getFilter();
+        return toFilter(filterList);
+    }
+
+    private Filter toFilter(List<String> filterList) {
         Filter filter = new Filter();
-        for(String pattern : crScmMaterial.getFilter())
+        for(String pattern : filterList)
         {
             filter.add(new IgnoredFiles(pattern));
         }
         return filter;
     }
+
 
     //TODO #1133 convert each config element
 }

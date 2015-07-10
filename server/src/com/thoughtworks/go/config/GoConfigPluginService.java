@@ -17,15 +17,16 @@ public class GoConfigPluginService {
 
     private final ConfigRepoExtension crExtension;
     private final XmlPartialConfigProvider embeddedXmlPlugin;
-    private ConfigConverter configConverter = new ConfigConverter(new GoCipher());
+    private ConfigConverter configConverter;
 
     @Autowired public GoConfigPluginService(ConfigRepoExtension configRepoExtension,
             ConfigCache configCache,ConfigElementImplementationRegistry configElementImplementationRegistry,
-            MetricsProbeService metricsProbeService)
+            MetricsProbeService metricsProbeService,CachedFileGoConfig cachedFileGoConfig)
     {
         this.crExtension = configRepoExtension;
         MagicalGoConfigXmlLoader loader = new MagicalGoConfigXmlLoader(configCache, configElementImplementationRegistry, metricsProbeService);
         embeddedXmlPlugin = new XmlPartialConfigProvider(loader);
+        configConverter = new ConfigConverter(new GoCipher(),cachedFileGoConfig);
     }
 
     public PartialConfigProvider partialConfigProviderFor(ConfigRepoConfig repoConfig)
