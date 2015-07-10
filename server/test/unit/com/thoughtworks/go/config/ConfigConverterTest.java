@@ -2,6 +2,7 @@ package com.thoughtworks.go.config;
 
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
+import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
@@ -10,6 +11,7 @@ import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariab
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRGitMaterial;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRHgMaterial;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
@@ -219,8 +221,21 @@ public class ConfigConverterTest {
         assertThat(gitMaterialConfig.getFilterAsString(),is("filter"));
         assertThat(gitMaterialConfig.getUrl(),is("url"));
         assertThat(gitMaterialConfig.getBranch(),is("branch"));
+    }
 
+    @Test
+    public void shouldConvertHgMaterial()
+    {
+        CRHgMaterial crHgMaterial = new CRHgMaterial("name","folder",true,filter,"url");
 
+        HgMaterialConfig hgMaterialConfig =
+                (HgMaterialConfig)configConverter.toMaterialConfig(crHgMaterial);
+
+        assertThat(hgMaterialConfig.getName().toLower(),is("name"));
+        assertThat(hgMaterialConfig.getFolder(),is("folder"));
+        assertThat(hgMaterialConfig.getAutoUpdate(),is(true));
+        assertThat(hgMaterialConfig.getFilterAsString(),is("filter"));
+        assertThat(hgMaterialConfig.getUrl(),is("url"));
     }
 
 }

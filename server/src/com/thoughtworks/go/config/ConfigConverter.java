@@ -6,6 +6,7 @@ import com.thoughtworks.go.config.materials.IgnoredFiles;
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
+import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
@@ -14,12 +15,10 @@ import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRGitMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRScmMaterial;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
+import com.thoughtworks.go.util.command.HgUrlArgument;
 import com.thoughtworks.go.util.command.UrlArgument;
 
 import java.util.Collection;
@@ -241,6 +240,13 @@ public class ConfigConverter {
             Filter filter = toFilter(crScmMaterial);
             return new GitMaterialConfig(new UrlArgument(git.getUrl()),git.getBranch(),
                     null,git.isAutoUpdate(), filter,crScmMaterial.getFolder(),
+                    new CaseInsensitiveString(crScmMaterial.getName()));
+        }
+        else if(crScmMaterial instanceof CRHgMaterial)
+        {
+            CRHgMaterial hg = (CRHgMaterial)crScmMaterial;
+            return new HgMaterialConfig(new HgUrlArgument(hg.getUrl()),
+            hg.isAutoUpdate(), toFilter(crScmMaterial), hg.getFolder(),
                     new CaseInsensitiveString(crScmMaterial.getName()));
         }
         else
