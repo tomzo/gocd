@@ -8,6 +8,7 @@ import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
+import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
@@ -264,9 +265,26 @@ public class ConfigConverter {
             }
             p4MaterialConfig.setUserName(crp4Material.getUserName());
             p4MaterialConfig.setUseTickets(crp4Material.getUseTickets());
-            setCommonMaterialMembers(p4MaterialConfig,crScmMaterial);
+            setCommonMaterialMembers(p4MaterialConfig, crScmMaterial);
             setCommonScmMaterialMembers(p4MaterialConfig,crp4Material);
             return p4MaterialConfig;
+        }
+        else if(crScmMaterial instanceof CRSvnMaterial)
+        {
+            CRSvnMaterial crSvnMaterial = (CRSvnMaterial)crScmMaterial;
+            SvnMaterialConfig svnMaterialConfig = new SvnMaterialConfig(
+                    crSvnMaterial.getUrl(), crSvnMaterial.getUsername(), crSvnMaterial.isCheckExternals(), cipher);
+            if(crSvnMaterial.getEncryptedPassword() != null)
+            {
+                svnMaterialConfig.setEncryptedPassword(crSvnMaterial.getEncryptedPassword());
+            }
+            else
+            {
+                svnMaterialConfig.setPassword(crSvnMaterial.getPassword());
+            }
+            setCommonMaterialMembers(svnMaterialConfig, crScmMaterial);
+            setCommonScmMaterialMembers(svnMaterialConfig,crSvnMaterial);
+            return svnMaterialConfig;
         }
         else
             throw new ConfigConvertionException(

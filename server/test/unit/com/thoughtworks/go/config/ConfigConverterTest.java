@@ -4,16 +4,14 @@ import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
+import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRGitMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRHgMaterial;
-import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRP4Material;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.*;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
@@ -270,6 +268,42 @@ public class ConfigConverterTest {
         assertThat(p4MaterialConfig.getUseTickets(), is(true));
         assertThat(p4MaterialConfig.getView(), is("view"));
 
+    }
+
+    @Test
+    public void shouldConvertSvmMaterialWhenEncryptedPassword()
+    {
+        CRSvnMaterial crSvnMaterial = CRSvnMaterial.withEncryptedPassword("name","folder",true,filter,"url","username","encryptedvalue",true);
+
+        SvnMaterialConfig svnMaterialConfig =
+                (SvnMaterialConfig)configConverter.toMaterialConfig(crSvnMaterial);
+
+        assertThat(svnMaterialConfig.getName().toLower(), is("name"));
+        assertThat(svnMaterialConfig.getFolder(), is("folder"));
+        assertThat(svnMaterialConfig.getAutoUpdate(), is(true));
+        assertThat(svnMaterialConfig.getFilterAsString(), is("filter"));
+        assertThat(svnMaterialConfig.getUrl(), is("url"));
+        assertThat(svnMaterialConfig.getUserName(), is("username"));
+        assertThat(svnMaterialConfig.getPassword(), is("secret"));
+        assertThat(svnMaterialConfig.isCheckExternals(), is(true));
+    }
+
+    @Test
+    public void shouldConvertSvmMaterialWhenPlainPassword()
+    {
+        CRSvnMaterial crSvnMaterial = new CRSvnMaterial("name","folder",true,filter,"url","username","secret",true);
+
+        SvnMaterialConfig svnMaterialConfig =
+                (SvnMaterialConfig)configConverter.toMaterialConfig(crSvnMaterial);
+
+        assertThat(svnMaterialConfig.getName().toLower(), is("name"));
+        assertThat(svnMaterialConfig.getFolder(), is("folder"));
+        assertThat(svnMaterialConfig.getAutoUpdate(), is(true));
+        assertThat(svnMaterialConfig.getFilterAsString(), is("filter"));
+        assertThat(svnMaterialConfig.getUrl(), is("url"));
+        assertThat(svnMaterialConfig.getUserName(), is("username"));
+        assertThat(svnMaterialConfig.getPassword(), is("secret"));
+        assertThat(svnMaterialConfig.isCheckExternals(), is(true));
     }
 
 }
