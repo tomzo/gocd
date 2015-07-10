@@ -9,6 +9,7 @@ import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
 import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
+import com.thoughtworks.go.config.materials.tfs.TfsMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
@@ -285,6 +286,26 @@ public class ConfigConverter {
             setCommonMaterialMembers(svnMaterialConfig, crScmMaterial);
             setCommonScmMaterialMembers(svnMaterialConfig,crSvnMaterial);
             return svnMaterialConfig;
+        }
+        else if(crScmMaterial instanceof CRTfsMaterial)
+        {
+            CRTfsMaterial crTfsMaterial = (CRTfsMaterial)crScmMaterial;
+            TfsMaterialConfig tfsMaterialConfig = new TfsMaterialConfig(cipher,
+                    new UrlArgument(crTfsMaterial.getUrl()),
+                    crTfsMaterial.getUserName(),
+                    crTfsMaterial.getDomain(),
+                    crTfsMaterial.getProjectPath());
+            if(crTfsMaterial.getEncryptedPassword() != null)
+            {
+                tfsMaterialConfig.setEncryptedPassword(crTfsMaterial.getEncryptedPassword());
+            }
+            else
+            {
+                tfsMaterialConfig.setPassword(crTfsMaterial.getPassword());
+            }
+            setCommonMaterialMembers(tfsMaterialConfig, crTfsMaterial);
+            setCommonScmMaterialMembers(tfsMaterialConfig,crTfsMaterial);
+            return tfsMaterialConfig;
         }
         else
             throw new ConfigConvertionException(

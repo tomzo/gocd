@@ -5,6 +5,7 @@ import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
 import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
+import com.thoughtworks.go.config.materials.tfs.TfsMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
@@ -273,7 +274,7 @@ public class ConfigConverterTest {
     @Test
     public void shouldConvertSvmMaterialWhenEncryptedPassword()
     {
-        CRSvnMaterial crSvnMaterial = CRSvnMaterial.withEncryptedPassword("name","folder",true,filter,"url","username","encryptedvalue",true);
+        CRSvnMaterial crSvnMaterial = CRSvnMaterial.withEncryptedPassword("name", "folder", true, filter, "url", "username", "encryptedvalue", true);
 
         SvnMaterialConfig svnMaterialConfig =
                 (SvnMaterialConfig)configConverter.toMaterialConfig(crSvnMaterial);
@@ -304,6 +305,27 @@ public class ConfigConverterTest {
         assertThat(svnMaterialConfig.getUserName(), is("username"));
         assertThat(svnMaterialConfig.getPassword(), is("secret"));
         assertThat(svnMaterialConfig.isCheckExternals(), is(true));
+    }
+
+    @Test
+    public void shouldConvertTfsMaterialWhenPlainPassword()
+    {
+        CRTfsMaterial crTfsMaterial = CRTfsMaterial.withPlainPassword(
+                "name", "folder", false, filter, "url", "domain" ,"user", "secret", "project");
+
+        TfsMaterialConfig tfsMaterialConfig =
+                (TfsMaterialConfig)configConverter.toMaterialConfig(crTfsMaterial);
+
+        assertThat(tfsMaterialConfig.getName().toLower(), is("name"));
+        assertThat(tfsMaterialConfig.getFolder(), is("folder"));
+        assertThat(tfsMaterialConfig.getAutoUpdate(), is(false));
+        assertThat(tfsMaterialConfig.getFilterAsString(), is("filter"));
+        assertThat(tfsMaterialConfig.getUrl(), is("url"));
+        assertThat(tfsMaterialConfig.getUserName(), is("user"));
+        assertThat(tfsMaterialConfig.getPassword(), is("secret"));
+        assertThat(tfsMaterialConfig.getDomain(), is("domain"));
+        assertThat(tfsMaterialConfig.getProjectPath(), is("project"));
+
     }
 
 }
