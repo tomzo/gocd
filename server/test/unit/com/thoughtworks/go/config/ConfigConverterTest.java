@@ -1,5 +1,6 @@
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.materials.PackageMaterialConfig;
 import com.thoughtworks.go.config.materials.PluggableSCMMaterial;
 import com.thoughtworks.go.config.materials.PluggableSCMMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
@@ -12,6 +13,9 @@ import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
+import com.thoughtworks.go.domain.packagerepository.PackageDefinition;
+import com.thoughtworks.go.domain.packagerepository.PackageRepositories;
+import com.thoughtworks.go.domain.packagerepository.PackageRepository;
 import com.thoughtworks.go.domain.scm.SCM;
 import com.thoughtworks.go.domain.scm.SCMs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
@@ -377,6 +381,29 @@ public class ConfigConverterTest {
         assertThat(pluggableSCMMaterialConfig.getFolder(),is("directory"));
         assertThat(pluggableSCMMaterialConfig.getFilterAsString(), is("filter"));
 
+    }
+
+    @Test
+    public void shouldConvertPackageMaterial()
+    {
+        PackageRepositories repositories = new PackageRepositories();
+        PackageRepository packageRepository = new PackageRepository();
+        PackageDefinition definition = new PackageDefinition("package-id", "n", new Configuration());
+        packageRepository.addPackage(definition);
+        repositories.add(packageRepository);
+
+        BasicCruiseConfig cruiseConfig = new BasicCruiseConfig();
+        cruiseConfig.setPackageRepositories(repositories);
+        when(cachedFileGoConfig.currentConfig()).thenReturn(cruiseConfig);
+
+        CRPackageMaterial crPackageMaterial = new CRPackageMaterial("name","package-id");
+
+        PackageMaterialConfig packageMaterialConfig =
+                (PackageMaterialConfig)configConverter.toMaterialConfig(crPackageMaterial);
+
+        assertThat(packageMaterialConfig.getName().toLower(),is("name"));
+        assertThat(packageMaterialConfig.getPackageId(),is("package-id"));
+        assertThat(packageMaterialConfig.getPackageDefinition(),is(definition));
     }
 
 }

@@ -14,6 +14,9 @@ import com.thoughtworks.go.domain.config.Arguments;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.PluginConfiguration;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
+import com.thoughtworks.go.domain.packagerepository.PackageDefinition;
+import com.thoughtworks.go.domain.packagerepository.PackageRepository;
+import com.thoughtworks.go.domain.packagerepository.Packages;
 import com.thoughtworks.go.domain.scm.SCM;
 import com.thoughtworks.go.domain.scm.SCMs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.*;
@@ -237,9 +240,27 @@ public class ConfigConverter {
             CRPluggableScmMaterial crPluggableScmMaterial = (CRPluggableScmMaterial)crMaterial;
             return toPluggableScmMaterialConfig(crPluggableScmMaterial);
         }
+        else if(crMaterial instanceof CRPackageMaterial)
+        {
+            CRPackageMaterial crPackageMaterial = (CRPackageMaterial)crMaterial;
+            return toPackageMaterial(crPackageMaterial);
+        }
         else
             throw new ConfigConvertionException(
                     String.format("unknown material type '%s'",crMaterial));
+    }
+
+    public PackageMaterialConfig toPackageMaterial(CRPackageMaterial crPackageMaterial) {
+        PackageDefinition packageDefinition = getPackageDefinition(crPackageMaterial.getPackageId());
+        return new PackageMaterialConfig(new CaseInsensitiveString(crPackageMaterial.getName()),crPackageMaterial.getPackageId(),packageDefinition);
+    }
+
+    private PackageDefinition getPackageDefinition(String packageId) {
+        PackageRepository packageRepositoryHaving = this.cachedFileGoConfig.currentConfig().getPackageRepositories().findPackageRepositoryHaving(packageId);
+        if(packageRepositoryHaving == null)
+            throw new ConfigConvertionException(
+                    String.format("Failed to find package repository with package id '%s'",packageId));
+        return packageRepositoryHaving.findPackage(packageId);
     }
 
     private PluggableSCMMaterialConfig toPluggableScmMaterialConfig(CRPluggableScmMaterial crPluggableScmMaterial) {
