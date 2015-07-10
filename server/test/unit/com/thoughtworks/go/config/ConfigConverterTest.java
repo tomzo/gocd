@@ -327,5 +327,25 @@ public class ConfigConverterTest {
         assertThat(tfsMaterialConfig.getProjectPath(), is("project"));
 
     }
+    @Test
+    public void shouldConvertTfsMaterialWhenEncryptedPassword()
+    {
+        CRTfsMaterial crTfsMaterial = CRTfsMaterial.withEncryptedPassword(
+                "name", "folder", false, filter, "url", "domain" ,"user", "encryptedvalue", "project");
+
+        TfsMaterialConfig tfsMaterialConfig =
+                (TfsMaterialConfig)configConverter.toMaterialConfig(crTfsMaterial);
+
+        assertThat(tfsMaterialConfig.getName().toLower(), is("name"));
+        assertThat(tfsMaterialConfig.getFolder(), is("folder"));
+        assertThat(tfsMaterialConfig.getAutoUpdate(), is(false));
+        assertThat(tfsMaterialConfig.getFilterAsString(), is("filter"));
+        assertThat(tfsMaterialConfig.getUrl(), is("url"));
+        assertThat(tfsMaterialConfig.getUserName(), is("user"));
+        assertThat(tfsMaterialConfig.getPassword(), is("secret"));
+        assertThat(tfsMaterialConfig.getDomain(), is("domain"));
+        assertThat(tfsMaterialConfig.getProjectPath(), is("project"));
+
+    }
 
 }
