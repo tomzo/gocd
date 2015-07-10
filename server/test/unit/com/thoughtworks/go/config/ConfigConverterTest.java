@@ -1,6 +1,7 @@
 package com.thoughtworks.go.config;
 
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
+import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.domain.RunIfConfigs;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRConfigurationProperty;
@@ -8,6 +9,7 @@ import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironment;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CREnvironmentVariable;
 import com.thoughtworks.go.plugin.access.configrepo.contract.CRPluginConfiguration;
 import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRDependencyMaterial;
+import com.thoughtworks.go.plugin.access.configrepo.contract.material.CRGitMaterial;
 import com.thoughtworks.go.plugin.access.configrepo.contract.tasks.*;
 import com.thoughtworks.go.security.GoCipher;
 import com.thoughtworks.go.server.util.CollectionUtil;
@@ -21,6 +23,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
@@ -34,6 +37,7 @@ public class ConfigConverterTest {
 
     private ConfigConverter configConverter;
     private GoCipher goCipher;
+    private List<String> filter = new ArrayList<>();
 
     @Before
     public void setUp() throws InvalidCipherTextException {
@@ -41,6 +45,9 @@ public class ConfigConverterTest {
         configConverter = new ConfigConverter(goCipher);
         String encryptedText = "secret";
         when(goCipher.decrypt("encryptedvalue")).thenReturn(encryptedText);
+
+        filter = new ArrayList<>();
+        filter.add("filter");
     }
 
     @Test
@@ -196,6 +203,24 @@ public class ConfigConverterTest {
         assertThat(dependencyMaterialConfig.getName().toLower(),is("name"));
         assertThat(dependencyMaterialConfig.getPipelineName().toLower(),is("pipe"));
         assertThat(dependencyMaterialConfig.getStageName().toLower(),is("stage"));
+    }
+
+    @Test
+    public void shouldConvertGitMaterial()
+    {
+        CRGitMaterial crGitMaterial = new CRGitMaterial("name","folder",true,filter,"url","branch");
+
+        GitMaterialConfig gitMaterialConfig =
+                (GitMaterialConfig)configConverter.toMaterialConfig(crGitMaterial);
+
+        assertThat(gitMaterialConfig.getName().toLower(),is("name"));
+        assertThat(gitMaterialConfig.getFolder(),is("folder"));
+        assertThat(gitMaterialConfig.getAutoUpdate(),is(true));
+        assertThat(gitMaterialConfig.getFilterAsString(),is("filter"));
+        assertThat(gitMaterialConfig.getUrl(),is("url"));
+        assertThat(gitMaterialConfig.getBranch(),is("branch"));
+
+
     }
 
 }
