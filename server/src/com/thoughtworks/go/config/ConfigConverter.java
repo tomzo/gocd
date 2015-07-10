@@ -7,6 +7,7 @@ import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
+import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.RunIfConfigs;
@@ -249,9 +250,33 @@ public class ConfigConverter {
             hg.isAutoUpdate(), toFilter(crScmMaterial), hg.getFolder(),
                     new CaseInsensitiveString(crScmMaterial.getName()));
         }
+        else if(crScmMaterial instanceof CRP4Material)
+        {
+            CRP4Material crp4Material = (CRP4Material)crScmMaterial;
+            P4MaterialConfig p4MaterialConfig = new P4MaterialConfig(crp4Material.getServerAndPort(), crp4Material.getView(), cipher);
+            if(crp4Material.getEncryptedPassword() != null)
+            {
+                p4MaterialConfig.setEncryptedPassword(crp4Material.getEncryptedPassword());
+            }
+            else
+            {
+                p4MaterialConfig.setPassword(crp4Material.getPassword());
+            }
+            p4MaterialConfig.setUserName(crp4Material.getUserName());
+            p4MaterialConfig.setUseTickets(crp4Material.getUseTickets());
+            setCommonMaterialMembers(p4MaterialConfig,crScmMaterial);
+            setCommonScmMaterialMembers(p4MaterialConfig,crp4Material);
+            return p4MaterialConfig;
+        }
         else
             throw new ConfigConvertionException(
                     String.format("unknown scm material type '%s'",crScmMaterial));
+    }
+
+    private void setCommonScmMaterialMembers(ScmMaterialConfig scmMaterialConfig, CRScmMaterial crScmMaterial) {
+        scmMaterialConfig.setFolder(crScmMaterial.getFolder());
+        scmMaterialConfig.setAutoUpdate(crScmMaterial.isAutoUpdate());
+        scmMaterialConfig.setFilter(toFilter(crScmMaterial));
     }
 
     private Filter toFilter(CRScmMaterial crScmMaterial) {
