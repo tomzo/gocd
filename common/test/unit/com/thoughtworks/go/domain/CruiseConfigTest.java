@@ -930,7 +930,18 @@ public class CruiseConfigTest {
         assertThat(cruiseConfig.hasPipelineGroup("non_existing_group"),is(false));
     }
 
-    // TODO actual merge cases
+    @Test
+    public void getAllLocalPipelines_shouldReturnPipelinesOnlyFromMainPart()
+    {
+        PipelineConfig pipe1 = PipelineConfigMother.pipelineConfig("pipe1");
+        pipelines = new BasicPipelineConfigs("group_main", new Authorization(), pipe1);
+        BasicCruiseConfig mainCruiseConfig = new BasicCruiseConfig(pipelines);
+        cruiseConfig = new BasicCruiseConfig(mainCruiseConfig,
+                PartialConfigMother.withPipeline("pipe2"));
+
+        assertThat(cruiseConfig.getAllLocalPipelineConfigs().size(), is(1));
+        assertThat(cruiseConfig.getAllLocalPipelineConfigs(),hasItem(pipe1));
+    }
 
     @Test
     public void shouldReturnTrueHasPipelinesFrom2Parts()

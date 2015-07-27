@@ -267,6 +267,8 @@ public interface CruiseConfig extends Validatable, ConfigOriginTraceable {
 
     boolean canDeletePluggableSCMMaterial(SCM scmConfig);
 
+    List<PipelineConfig> getAllLocalPipelineConfigs();
+
     public enum FeatureSupported {
         Yes, No, InvalidLicense
     }
