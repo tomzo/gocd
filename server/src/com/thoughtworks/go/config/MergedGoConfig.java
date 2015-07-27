@@ -126,8 +126,8 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
     }
 
     public CruiseConfig loadForEditing() {
-        //here we will return main CruiseConfig because merged cannot be (entirely) edited
-        return fileService.loadForEditing();
+        // merged cannot be (entirely) edited but we return it so that all pipelines are rendered in admin->pipelines
+        return currentConfigForEdit;
     }
 
     public CruiseConfig currentConfig() {
