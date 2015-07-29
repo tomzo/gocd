@@ -18,6 +18,7 @@ package com.thoughtworks.go.config.merge;
 import com.thoughtworks.go.config.*;
 import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.config.remote.FileConfigOrigin;
+import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.NameTypeValidator;
 import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.domain.PiplineConfigVisitor;
@@ -158,7 +159,12 @@ public class MergePipelineConfigs implements PipelineConfigs {
 
     @Override
     public ConfigOrigin getOrigin() {
-        throw new RuntimeException("Not implemented");
+        MergeConfigOrigin origins = new MergeConfigOrigin();
+        for(PipelineConfigs part : this.parts)
+        {
+            origins.add(part.getOrigin());
+        }
+        return origins;
     }
 
     @Override
