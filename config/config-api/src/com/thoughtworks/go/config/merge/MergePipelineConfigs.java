@@ -49,6 +49,12 @@ public class MergePipelineConfigs implements PipelineConfigs {
         validateGroupNameUniqueness(this.parts);
     }
 
+    public void addPart(BasicPipelineConfigs pipelineConfigs) {
+        if (!StringUtils.equals(pipelineConfigs.getGroup(), this.getGroup()))
+            throw new IllegalArgumentException("Group names must be the same in merge");
+        this.parts.add(pipelineConfigs);
+    }
+
     private void validateGroupNameUniqueness(List<PipelineConfigs> parts) {
         String name = parts.get(0).getGroup();
         for (PipelineConfigs part : parts) {
@@ -224,6 +230,21 @@ public class MergePipelineConfigs implements PipelineConfigs {
             start = end;
         }
         throw new IndexOutOfBoundsException();
+    }
+
+    @Override
+    public PipelineConfigs getLocal() {
+        for (PipelineConfigs part : this.parts)
+        {
+            if(part.isLocal())
+                return part;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return getOrigin() == null || getOrigin().isLocal();
     }
 
     @Override
