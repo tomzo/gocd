@@ -897,6 +897,7 @@ public class PipelineConfig extends BaseCollection<StageConfig> implements Param
         this.origin = origin;
     }
 
+
     public void setLock(boolean lock) {
         if(lock)
             this.lockExplicitly();
@@ -906,5 +907,9 @@ public class PipelineConfig extends BaseCollection<StageConfig> implements Param
 
     public void setTimer(TimerConfig timer) {
         this.timer = timer;
+    }
+
+    public boolean isLocal() {
+        return origin == null || this.origin.isLocal();
     }
 }

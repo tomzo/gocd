@@ -144,4 +144,18 @@ public class MergedGoConfigTest extends CachedGoConfigBaseTest {
         verify(listener, times(1)).onConfigChange(cachedGoConfig.currentConfig());
     }
 
+    @Test
+    public void shouldReturnRemotePipelinesAmongAllPipelinesInConfigForEdit() throws Exception
+    {
+        assertThat(configWatchList.getCurrentConfigRepos().size(),is(1));
+        ConfigRepoConfig configRepo = configWatchList.getCurrentConfigRepos().get(0);
+        PartialConfig part1 = new PartialConfig(new PipelineGroups(
+                PipelineConfigMother.createGroup("part1", PipelineConfigMother.pipelineConfig("pipe1"))));
+        when(plugin.Load(any(File.class),any(PartialConfigLoadContext.class))).thenReturn(
+                part1
+        );
+        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(),folder,"321e");
+        assertThat(repoConfigDataSource.latestPartialConfigForMaterial(configRepo.getMaterialConfig()),is(part1));
+        assertThat(cachedGoConfig.loadForEditing().hasPipelineNamed(new CaseInsensitiveString("pipe1")),is(true));
+    }
 }

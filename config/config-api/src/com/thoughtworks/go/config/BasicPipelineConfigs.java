@@ -436,7 +436,24 @@ public class BasicPipelineConfigs extends BaseCollection<PipelineConfig> impleme
          return super.remove(i);
     }
 
+    @Override
+    public PipelineConfigs getLocal() {
+        if(this.isLocal())
+            return this;
+        return null;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return getOrigin() == null || getOrigin().isLocal();
+    }
+
     public void setOrigin(ConfigOrigin origin) {
         this.configOrigin = origin;
+    }
+
+    @Override
+    public boolean hasRemoteParts() {
+        return getOrigin() != null && !getOrigin().isLocal();
     }
 }
