@@ -22,6 +22,7 @@ import com.thoughtworks.go.domain.Plugin;
 import com.thoughtworks.go.plugin.access.authentication.AuthenticationExtension;
 import com.thoughtworks.go.plugin.access.common.settings.PluginSettingsConfiguration;
 import com.thoughtworks.go.plugin.access.common.settings.PluginSettingsMetadataStore;
+import com.thoughtworks.go.plugin.access.configrepo.ConfigRepoExtension;
 import com.thoughtworks.go.plugin.access.notification.NotificationExtension;
 import com.thoughtworks.go.plugin.access.packagematerial.PackageAsRepositoryExtension;
 import com.thoughtworks.go.plugin.access.pluggabletask.TaskExtension;
@@ -42,17 +43,19 @@ public class PluginService {
     private TaskExtension taskExtension;
     private NotificationExtension notificationExtension;
     private AuthenticationExtension authenticationExtension;
+    private ConfigRepoExtension configRepoExtension;
     private PluginSqlMapDao pluginDao;
 
     @Autowired
     public PluginService(PackageAsRepositoryExtension packageAsRepositoryExtension, SCMExtension scmExtension,
-                         TaskExtension taskExtension, NotificationExtension notificationExtension,
+                         TaskExtension taskExtension, NotificationExtension notificationExtension, ConfigRepoExtension configRepoExtension,
                          AuthenticationExtension authenticationExtension, PluginSqlMapDao pluginDao) {
         this.packageAsRepositoryExtension = packageAsRepositoryExtension;
         this.scmExtension = scmExtension;
         this.taskExtension = taskExtension;
         this.notificationExtension = notificationExtension;
         this.authenticationExtension = authenticationExtension;
+        this.configRepoExtension = configRepoExtension;
         this.pluginDao = pluginDao;
     }
 
@@ -87,6 +90,8 @@ public class PluginService {
             result = notificationExtension.validatePluginSettings(pluginId, configuration);
         } else if (authenticationExtension.isAuthenticationPlugin(pluginId)) {
             result = authenticationExtension.validatePluginSettings(pluginId, configuration);
+        } else if (configRepoExtension.isConfigRepoPlugin(pluginId)) {
+            result = configRepoExtension.validatePluginSettings(pluginId, configuration);
         }
         if (!result.isSuccessful()) {
             for (ValidationError error : result.getErrors()) {

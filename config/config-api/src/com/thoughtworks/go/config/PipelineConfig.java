@@ -896,4 +896,15 @@ public class PipelineConfig extends BaseCollection<StageConfig> implements Param
     public void setOrigin(ConfigOrigin origin) {
         this.origin = origin;
     }
+
+    public void setLock(boolean lock) {
+        if(lock)
+            this.lockExplicitly();
+        else
+            this.unlockExplicitly();
+    }
+
+    public void setTimer(TimerConfig timer) {
+        this.timer = timer;
+    }
 }
