@@ -20,10 +20,8 @@ import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.config.remote.ConfigRepoConfig;
 import com.thoughtworks.go.config.remote.FileConfigOrigin;
 import com.thoughtworks.go.config.remote.RepoConfigOrigin;
-import com.thoughtworks.go.domain.config.Admin;
 import com.thoughtworks.go.helper.PipelineConfigMother;
 import org.hamcrest.Matchers;
-import org.hamcrest.core.IsCollectionContaining;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -31,11 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.thoughtworks.go.config.Authorization.PrivilegeState.DISABLED;
-import static com.thoughtworks.go.config.Authorization.PrivilegeState.OFF;
-import static com.thoughtworks.go.config.Authorization.PrivilegeState.ON;
-import static com.thoughtworks.go.config.Authorization.UserType.ROLE;
-import static com.thoughtworks.go.config.Authorization.UserType.USER;
 import static com.thoughtworks.go.util.DataStructureUtils.a;
 import static com.thoughtworks.go.util.DataStructureUtils.m;
 import static org.hamcrest.Matchers.hasItem;
@@ -44,7 +37,7 @@ import static org.hamcrest.core.IsCollectionContaining.hasItems;
 import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.*;
 
-public class MergePipelineConfigsTest extends PipelineConfigsBaseTest  {
+public class MergePipelineConfigsTest extends PipelineConfigsTestBase {
 
     @Override
     protected PipelineConfigs createWithPipeline(PipelineConfig pipelineConfig) {

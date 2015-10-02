@@ -35,7 +35,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MergeEnvironmentConfigTest extends EnvironmentConfigBaseTest {
+public class MergeEnvironmentConfigTest extends EnvironmentConfigTestBase {
     public MergeEnvironmentConfig singleEnvironmentConfig;
     public MergeEnvironmentConfig pairEnvironmentConfig;
     private static final String AGENT_UUID = "uuid";

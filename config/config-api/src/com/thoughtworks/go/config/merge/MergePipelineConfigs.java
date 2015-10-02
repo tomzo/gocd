@@ -35,7 +35,7 @@ import static com.thoughtworks.go.util.ExceptionUtils.bomb;
  */
 public class MergePipelineConfigs implements PipelineConfigs {
 
-    private List<PipelineConfigs> parts = new ArrayList<PipelineConfigs>();
+    private PipelineConfigsPartials parts = new PipelineConfigsPartials();
 
     private final ConfigErrors configErrors = new ConfigErrors();
 
@@ -46,7 +46,7 @@ public class MergePipelineConfigs implements PipelineConfigs {
     }
     public MergePipelineConfigs(List<PipelineConfigs> parts)
     {
-        this.parts = parts;
+        this.parts.addAll(parts);
         validateGroupNameUniqueness(this.parts);
     }
 
@@ -114,10 +114,7 @@ public class MergePipelineConfigs implements PipelineConfigs {
 
     @Override
     public void validate(ValidationContext validationContext) {
-        String group = this.getGroup();
-        if (StringUtils.isBlank(group) || !new NameTypeValidator().isNameValid(group)) {
-            this.configErrors.add(GROUP, NameTypeValidator.errorMessage("group", group));
-        }
+        this.validateGroupNameAndAddErrorsTo(this.configErrors);
         for(PipelineConfigs part : this.parts)
         {
             part.validate(validationContext);
@@ -251,6 +248,9 @@ public class MergePipelineConfigs implements PipelineConfigs {
     @Override
     public boolean isLocal() {
         return getOrigin() == null || getOrigin().isLocal();
+    }
+    public void validateGroupNameAndAddErrorsTo(ConfigErrors errors) {
+        this.parts.get(0).validateGroupNameAndAddErrorsTo(errors);
     }
 
     @Override
@@ -614,7 +614,10 @@ public class MergePipelineConfigs implements PipelineConfigs {
 
     @Override
     public boolean hasAuthorizationDefined() {
-        return this.getAuthorizationPart().hasAuthorizationDefined();
+        PipelineConfigs authPart = this.getAuthorizationPartOrNull();
+        if(authPart == null)
+            return  false;
+        return authPart.hasAuthorizationDefined();
     }
 
     @Override
@@ -635,12 +638,18 @@ public class MergePipelineConfigs implements PipelineConfigs {
 
     @Override
     public boolean hasViewPermissionDefined() {
-        return this.getAuthorizationPart().hasViewPermissionDefined();
+        PipelineConfigs authPart = this.getAuthorizationPartOrNull();
+        if(authPart == null)
+            return  false;
+        return authPart.hasViewPermissionDefined();
     }
 
     @Override
     public boolean hasOperationPermissionDefined() {
-        return this.getAuthorizationPart().hasOperationPermissionDefined();
+        PipelineConfigs authPart = this.getAuthorizationPartOrNull();
+        if(authPart == null)
+            return  false;
+        return authPart.hasOperationPermissionDefined();
     }
 
     @Override
