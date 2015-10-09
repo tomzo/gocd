@@ -56,6 +56,10 @@ public class ArtifactPlan extends PersistentObject implements Artifact {
         setDest(destination);
         this.artifactType = artifactType;
     }
+    public ArtifactPlan(String source, String destination) {
+        setSrc(source);
+        setDest(destination);
+    }
 
     public ArtifactPlan(ArtifactPlan other) {
         this(other.artifactType, other.src, other.dest);

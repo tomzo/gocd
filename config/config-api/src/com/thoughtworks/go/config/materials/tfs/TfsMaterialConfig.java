@@ -73,6 +73,13 @@ public class TfsMaterialConfig extends ScmMaterialConfig implements ParamsAttrib
         this.goCipher = goCipher;
     }
 
+    public TfsMaterialConfig(GoCipher goCipher, UrlArgument url, String userName, String domain, String projectPath) {
+        this(goCipher);
+        this.url = url;
+        this.userName = userName;
+        this.domain = domain;
+        this.projectPath = projectPath;
+    }
     public TfsMaterialConfig(GoCipher goCipher, UrlArgument url, String userName, String domain, String password, String projectPath) {
         this(goCipher);
         this.url = url;
@@ -284,5 +291,9 @@ public class TfsMaterialConfig extends ScmMaterialConfig implements ParamsAttrib
             this.projectPath = (String) map.get(PROJECT_PATH);
         }
 
+    }
+
+    public void setEncryptedPassword(String encryptedPassword) {
+        this.encryptedPassword = encryptedPassword;
     }
 }
