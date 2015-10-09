@@ -102,12 +102,12 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
     @Test
     public void shouldListenForPartialChangesUponCreation()
     {
-        assertTrue(partials.hasListener((MergedGoConfig)cachedGoConfig));
+        assertTrue(partials.hasListener((MergedGoConfig) cachedGoConfig));
     }
     @Test
     public void shouldListenForFileChangesUponCreation()
     {
-        assertTrue(cachedFileGoConfig.hasListener((MergedGoConfig)cachedGoConfig));
+        assertTrue(cachedFileGoConfig.hasListener((MergedGoConfig) cachedGoConfig));
     }
 
     @Test
@@ -120,7 +120,7 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
         when(plugin.load(any(File.class), any(PartialConfigLoadContext.class))).thenReturn(
                 part1
         );
-        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(),folder,"321e");
+        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
         assertThat(repoConfigDataSource.latestPartialConfigForMaterial(configRepo.getMaterialConfig()),is(part1));
         assertThat(cachedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")),is(true));
     }
@@ -138,11 +138,25 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
         // at registration
         verify(listener, times(1)).onConfigChange(any(CruiseConfig.class));
 
-        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(),folder,"321e");
+        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
 
         assertThat("currentConfigShouldBeMerged",
-                cachedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")),is(true));
+                cachedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
         verify(listener, times(2)).onConfigChange(any(CruiseConfig.class));
+    }
+
+    @Test
+    public void shouldReturnRemotePipelinesAmongAllPipelinesInConfigForEdit() throws Exception {
+        assertThat(configWatchList.getCurrentConfigRepos().size(), is(1));
+        ConfigRepoConfig configRepo = configWatchList.getCurrentConfigRepos().get(0);
+        PartialConfig part1 = new PartialConfig(new PipelineGroups(
+                PipelineConfigMother.createGroup("part1", PipelineConfigMother.pipelineConfig("pipe1"))));
+        when(plugin.load(any(File.class), any(PartialConfigLoadContext.class))).thenReturn(
+                part1
+        );
+        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
+        assertThat(repoConfigDataSource.latestPartialConfigForMaterial(configRepo.getMaterialConfig()), is(part1));
+        assertThat(cachedGoConfig.loadForEditing().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
     }
 
     @Test

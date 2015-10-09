@@ -159,4 +159,29 @@ public abstract class EnvironmentConfigTestBase {
         map.put(EnvironmentVariableConfig.VALUE, value);
         return map;
     }
+
+    @Test
+    public void shouldReturnTrueWhenIsEmpty()
+    {
+        assertThat(environmentConfig.isEnvironmentEmpty(),is(true));
+    }
+    @Test
+    public void shouldReturnFalseThatNotEmptyWhenHasPipeline()
+    {
+        environmentConfig.addPipeline(new CaseInsensitiveString("pipe"));
+        assertThat(environmentConfig.isEnvironmentEmpty(), is(false));
+    }
+    @Test
+    public void shouldReturnFalseThatNotEmptyWhenHasAgent()
+    {
+        environmentConfig.addAgent("agent");
+        assertThat(environmentConfig.isEnvironmentEmpty(), is(false));
+    }
+    @Test
+    public void shouldReturnFalseThatNotEmptyWhenHasVariable()
+    {
+        environmentConfig.addEnvironmentVariable("k","v");
+        assertThat(environmentConfig.isEnvironmentEmpty(), is(false));
+    }
+
 }

@@ -435,6 +435,17 @@ public class BasicPipelineConfigs extends BaseCollection<PipelineConfig> impleme
     }
 
     @Override
+    public PipelineConfigs getLocal() {
+        if(this.isLocal())
+            return this;
+        return null;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return getOrigin() == null || getOrigin().isLocal();
+    }
+
     public void validateGroupNameAndAddErrorsTo(ConfigErrors errors) {
         if (StringUtils.isBlank(group) || !new NameTypeValidator().isNameValid(group)) {
             String errorText = NameTypeValidator.errorMessage("group", group);
@@ -444,5 +455,10 @@ public class BasicPipelineConfigs extends BaseCollection<PipelineConfig> impleme
 
     public void setOrigin(ConfigOrigin origin) {
         this.configOrigin = origin;
+    }
+
+    @Override
+    public boolean hasRemoteParts() {
+        return getOrigin() != null && !getOrigin().isLocal();
     }
 }

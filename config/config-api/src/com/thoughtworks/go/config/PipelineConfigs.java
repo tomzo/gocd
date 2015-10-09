@@ -40,6 +40,8 @@ public interface PipelineConfigs extends Iterable<PipelineConfig>, Cloneable, Va
 
     boolean isEmpty();
 
+    boolean hasRemoteParts();
+
     ConfigOrigin getOrigin();
 
     PipelineConfig findBy(CaseInsensitiveString pipelineName);
@@ -121,6 +123,10 @@ public interface PipelineConfigs extends Iterable<PipelineConfig>, Cloneable, Va
     void remove(PipelineConfig pipelineConfig);
 
     PipelineConfig remove(int i);
+
+    PipelineConfigs getLocal();
+
+    boolean isLocal();
 
     void validateGroupNameAndAddErrorsTo(ConfigErrors errors);
 }
