@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,45 +12,58 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.server.service;
 
 import java.util.Map;
 
 import com.thoughtworks.go.config.*;
+import com.thoughtworks.go.config.materials.MaterialConfigs;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.remote.ConfigRepoConfig;
 import com.thoughtworks.go.config.remote.RepoConfigOrigin;
 import com.thoughtworks.go.helper.PipelineConfigMother;
 import com.thoughtworks.go.i18n.LocalizedMessage;
+import com.thoughtworks.go.server.cache.GoCache;
 import com.thoughtworks.go.server.presentation.CanDeleteResult;
+import org.junit.Before;
 import org.junit.Test;
 
 import static com.thoughtworks.go.helper.EnvironmentConfigMother.environment;
 import static com.thoughtworks.go.helper.PipelineConfigMother.createGroup;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 public class PipelineConfigServiceTest {
 
-    @Test
-    public void shouldBeAbleToGetTheCanDeleteStatusOfAllPipelines() {
+    private PipelineConfigService pipelineConfigService;
+    private CruiseConfig cruiseConfig;
+    private GoConfigService goConfigService;
+    private GoCache goCache;
+
+    @Before
+    public void setUp() throws Exception {
         PipelineConfigs configs = createGroup("group", "pipeline", "in_env");
         downstream(configs);
-        CruiseConfig cruiseConfig = new BasicCruiseConfig(configs);
+        cruiseConfig = new BasicCruiseConfig(configs);
         cruiseConfig.addEnvironment(environment("foo", "in_env"));
         PipelineConfig remotePipeline = PipelineConfigMother.pipelineConfig("remote");
         remotePipeline.setOrigin(new RepoConfigOrigin(new ConfigRepoConfig(new GitMaterialConfig("url"),"plugin"),"1234"));
         cruiseConfig.addPipeline("group",remotePipeline);
 
-        GoConfigService service = mock(GoConfigService.class);
-        when(service.getCurrentConfig()).thenReturn(cruiseConfig);
+        goConfigService = mock(GoConfigService.class);
+        when(goConfigService.getCurrentConfig()).thenReturn(cruiseConfig);
+        when(goConfigService.getConfigForEditing()).thenReturn(cruiseConfig);
+        goCache = mock(GoCache.class);
+        PipelineConfigurationCache.getInstance().onConfigChange(cruiseConfig);
+        pipelineConfigService = new PipelineConfigService(goConfigService, goCache);
+    }
 
-        PipelineConfigService pipelineConfigService = new PipelineConfigService(service);
+    @Test
+    public void shouldBeAbleToGetTheCanDeleteStatusOfAllPipelines() {
 
         Map<CaseInsensitiveString, CanDeleteResult> pipelineToCanDeleteIt = pipelineConfigService.canDeletePipelines();
 
@@ -59,6 +72,41 @@ public class PipelineConfigServiceTest {
         assertThat(pipelineToCanDeleteIt.get(new CaseInsensitiveString("in_env")), is(new CanDeleteResult(false, LocalizedMessage.string("CANNOT_DELETE_PIPELINE_IN_ENVIRONMENT", new CaseInsensitiveString("in_env"), new CaseInsensitiveString("foo")))));
         assertThat(pipelineToCanDeleteIt.get(new CaseInsensitiveString("pipeline")), is(new CanDeleteResult(false, LocalizedMessage.string("CANNOT_DELETE_PIPELINE_USED_AS_MATERIALS", new CaseInsensitiveString("pipeline"), new CaseInsensitiveString("down")))));
         assertThat(pipelineToCanDeleteIt.get(new CaseInsensitiveString("remote")), is(new CanDeleteResult(false, LocalizedMessage.string("CANNOT_DELETE_REMOTE_PIPELINE", new CaseInsensitiveString("remote"), "url at 1234"))));
+    }
+
+    @Test
+    public void shouldGetPipelineConfigBasedOnName() {
+        String pipelineName = "pipeline";
+        PipelineConfigurationCache.getInstance().onConfigChange(cruiseConfig);
+        PipelineConfig pipeline = pipelineConfigService.getPipelineConfig(pipelineName);
+        assertThat(pipeline, is(cruiseConfig.pipelineConfigByName(new CaseInsensitiveString(pipelineName))));
+    }
+
+    @Test
+    public void shouldRemovePipelineConfigFromCacheWhenPresentOnPipelineConfigChange() {
+        when(goCache.get("GO_PIPELINE_CONFIGS_ETAGS_CACHE", "p")).thenReturn(new Object());
+        PipelineConfig pipelineConfig = new PipelineConfig(new CaseInsensitiveString("p"), new MaterialConfigs());
+        pipelineConfigService.onPipelineConfigChange(pipelineConfig, "grp");
+        verify(goCache).remove("GO_PIPELINE_CONFIGS_ETAGS_CACHE", "p");
+    }
+
+    @Test
+    public void shouldNotRemovePipelineConfigFromCacheWhenNotPresentOnPipelineConfigChange(){
+        PipelineConfig pipelineConfig = new PipelineConfig(new CaseInsensitiveString("p"), new MaterialConfigs());
+        pipelineConfigService.onPipelineConfigChange(pipelineConfig, "grp");
+        verify(goCache, never()).remove("GO_PIPELINE_CONFIGS_ETAGS_CACHE", "p");
+    }
+    @Test
+    public void shouldRemovePipelineConfigsFromCacheWhenPresentOnGoConfigChange() {
+        when(goCache.get("GO_PIPELINE_CONFIGS_ETAGS_CACHE")).thenReturn(new Object());
+        pipelineConfigService.onConfigChange(cruiseConfig);
+        verify(goCache).remove("GO_PIPELINE_CONFIGS_ETAGS_CACHE");
+    }
+
+    @Test
+    public void shouldNotRemovePipelineConfigsFromCacheWhenNotPresentOnGoConfigChange(){
+        pipelineConfigService.onConfigChange(cruiseConfig);
+        verify(goCache, never()).remove("GO_PIPELINE_CONFIGS_ETAGS_CACHE");
     }
 
     private void downstream(PipelineConfigs configs) {
