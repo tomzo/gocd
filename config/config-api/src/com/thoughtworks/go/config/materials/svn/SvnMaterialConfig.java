@@ -310,8 +310,4 @@ public class SvnMaterialConfig extends ScmMaterialConfig implements ParamsAttrib
                 ", checkExternals=" + checkExternals +
                 '}';
     }
-
-    public void setEncryptedPassword(String encryptedPassword) {
-        this.encryptedPassword = encryptedPassword;
-    }
 }

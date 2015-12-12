@@ -315,8 +315,4 @@ public class TfsMaterialConfig extends ScmMaterialConfig implements ParamsAttrib
         }
 
     }
-
-    public void setEncryptedPassword(String encryptedPassword) {
-        this.encryptedPassword = encryptedPassword;
-    }
 }

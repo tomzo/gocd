@@ -68,10 +68,6 @@ public class ArtifactPlan extends PersistentObject implements Artifact {
         this.errors = other.errors;
     }
 
-    public ArtifactPlan(String src, String dest) {
-        this(ArtifactType.file, src, dest);
-    }
-
     public File getSource(File rootPath) {
         return new File(FileUtil.applyBaseDirIfRelativeAndNormalize(rootPath, new File(getSrc())));
     }
