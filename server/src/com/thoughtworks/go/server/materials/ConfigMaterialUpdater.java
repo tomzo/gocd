@@ -81,7 +81,7 @@ public class ConfigMaterialUpdater implements GoMessageListener<MaterialUpdateCo
             if(message instanceof MaterialUpdateFailedMessage)
             {
                 MaterialUpdateFailedMessage failure = (MaterialUpdateFailedMessage)message;
-                LOGGER.warn(String.format("[Config Material Update] Cannot update configuration part because material update has failed. Reason: ",
+                LOGGER.warn(String.format("[Config Material Update] Cannot update configuration part because material update has failed. Reason: %s",
                         failure.getReason()));
             }
             else {
