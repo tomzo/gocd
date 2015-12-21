@@ -1,1 +1,1 @@
-IDE_DOCKER_IMAGE=tomzo/gocd-ide:latest
+IDE_DOCKER_IMAGE=tomzo/gocd-ide:0.1.2
