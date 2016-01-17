@@ -125,7 +125,7 @@ public class GoConfigFileHelper {
             CachedFileGoConfig fileService = new CachedFileGoConfig(dataSource,serverHealthService);
             GoConfigWatchList configWatchList = new GoConfigWatchList(fileService);
             GoRepoConfigDataSource repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,
-                    new GoConfigPluginService(mock(ConfigRepoExtension.class),configCache,configElementImplementationRegistry,probeService,fileService));
+                    new GoConfigPluginService(mock(ConfigRepoExtension.class),configCache,configElementImplementationRegistry,probeService,fileService),serverHealthService);
             GoPartialConfig partialConfig = new GoPartialConfig(repoConfigDataSource,configWatchList);
             MergedGoConfig cachedConfigService = new MergedGoConfig(serverHealthService,fileService,partialConfig);
             cachedConfigService.loadConfigIfNull();
