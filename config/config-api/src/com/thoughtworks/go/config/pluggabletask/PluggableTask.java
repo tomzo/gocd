@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.config.pluggabletask;
 
@@ -42,6 +42,7 @@ import java.util.Map;
  */
 @ConfigTag("task")
 public class PluggableTask extends AbstractTask {
+    public static final String TYPE = "pluggable_task";
     public static final String VALUE_KEY = "value";
     public static final String ERRORS_KEY = "errors";
 
@@ -66,6 +67,10 @@ public class PluggableTask extends AbstractTask {
 
     public PluginConfiguration getPluginConfiguration() {
         return pluginConfiguration;
+    }
+
+    public void setPluginConfiguration(PluginConfiguration pluginConfiguration) {
+        this.pluginConfiguration = pluginConfiguration;
     }
 
     public Configuration getConfiguration() {
@@ -94,6 +99,24 @@ public class PluggableTask extends AbstractTask {
         }
     }
 
+    public void setConfiguration(ConfigurationProperty configurationProperty) {
+        if (PluggableTaskConfigStore.store().preferenceFor(pluginConfiguration.getId()) != null) {
+            TaskConfig taskConfig = PluggableTaskConfigStore.store().preferenceFor(pluginConfiguration.getId()).getConfig();
+            String configKeyName = configurationProperty.getConfigKeyName();
+            Property property_definition = taskConfig.get(configKeyName);
+            if (configuration.getProperty(configKeyName) == null) {
+                configuration.addNewConfiguration(configKeyName, property_definition.getOption(Property.SECURE));
+            }
+            ConfigurationProperty addedConfigProperty = configuration.getProperty(configKeyName);
+
+            addedConfigProperty.setConfigurationValue(configurationProperty.getConfigurationValue());
+            addedConfigProperty.setEncryptedConfigurationValue(configurationProperty.getEncryptedValue());
+            addedConfigProperty.handleSecureValueConfiguration(property_definition.getOption(Property.SECURE));
+        } else {
+            addError(TYPE, String.format("Could not find plugin for given pluggable id:[%s].", pluginConfiguration.getId()));
+        }
+    }
+
     @Override
     protected void validateTask(ValidationContext validationContext) {
     }
@@ -111,12 +134,12 @@ public class PluggableTask extends AbstractTask {
     @Override
     public List<TaskProperty> getPropertiesForDisplay() {
         ArrayList<TaskProperty> taskProperties = new ArrayList<TaskProperty>();
-        if(PluggableTaskConfigStore.store().hasPreferenceFor(pluginConfiguration.getId())){
+        if (PluggableTaskConfigStore.store().hasPreferenceFor(pluginConfiguration.getId())) {
             TaskPreference preference = PluggableTaskConfigStore.store().preferenceFor(pluginConfiguration.getId());
             List<? extends Property> propertyDefinitions = preference.getConfig().list();
             for (Property propertyDefinition : propertyDefinitions) {
                 ConfigurationProperty configuredProperty = configuration.getProperty(propertyDefinition.getKey());
-                if(configuredProperty == null) continue;
+                if (configuredProperty == null) continue;
                 taskProperties.add(new TaskProperty(propertyDefinition.getOption(Property.DISPLAY_NAME), configuredProperty.getDisplayValue(), configuredProperty.getConfigKeyName()));
             }
             return taskProperties;

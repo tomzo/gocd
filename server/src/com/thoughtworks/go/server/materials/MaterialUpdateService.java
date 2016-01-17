@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,16 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.server.materials;
 
 import com.thoughtworks.go.config.CruiseConfig;
+import com.thoughtworks.go.config.GoConfigWatchList;
+import com.thoughtworks.go.config.PipelineConfig;
 import com.thoughtworks.go.domain.PipelineGroups;
 import com.thoughtworks.go.domain.materials.Material;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
 import com.thoughtworks.go.i18n.LocalizedMessage;
-import com.thoughtworks.go.listener.ConfigChangedListener;
+import com.thoughtworks.go.listener.PipelineConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
 import com.thoughtworks.go.server.materials.postcommit.PostCommitHookImplementer;
 import com.thoughtworks.go.server.materials.postcommit.PostCommitHookMaterialType;
@@ -56,10 +58,12 @@ import static java.lang.String.format;
  * @understands when to send requests to update a material on the database
  */
 @Service
-public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCompletedMessage>, ConfigChangedListener {
+public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCompletedMessage>, PipelineConfigChangedListener {
     private static final Logger LOGGER = Logger.getLogger(MaterialUpdateService.class);
 
     private final MaterialUpdateQueue updateQueue;
+    private final ConfigMaterialUpdateQueue configUpdateQueue;
+    private final GoConfigWatchList watchList;
     private final GoConfigService goConfigService;
     private final SystemEnvironment systemEnvironment;
     private ServerHealthService serverHealthService;
@@ -75,13 +79,18 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
     private Set<Material> schedulableMaterials;
 
     @Autowired
-    public MaterialUpdateService(MaterialUpdateQueue queue, MaterialUpdateCompletedTopic completed, GoConfigService goConfigService,
+    public MaterialUpdateService(MaterialUpdateQueue queue,ConfigMaterialUpdateQueue configUpdateQueue,
+                                 MaterialUpdateCompletedTopic completed,
+                                 GoConfigWatchList watchList,
+                                 GoConfigService goConfigService,
                                  SystemEnvironment systemEnvironment, ServerHealthService serverHealthService,
                                  PostCommitHookMaterialTypeResolver postCommitHookMaterialType,
                                  MDUPerformanceLogger mduPerformanceLogger, MaterialConfigConverter materialConfigConverter) {
+        this.watchList = watchList;
         this.goConfigService = goConfigService;
         this.systemEnvironment = systemEnvironment;
         this.updateQueue = queue;
+        this.configUpdateQueue = configUpdateQueue;
         this.serverHealthService = serverHealthService;
         this.postCommitHookMaterialType = postCommitHookMaterialType;
         this.mduPerformanceLogger = mduPerformanceLogger;
@@ -146,7 +155,10 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
             }
             try {
                 long trackingId = mduPerformanceLogger.materialSentToUpdateQueue(material);
-                updateQueue.post(new MaterialUpdateMessage(material, trackingId));
+                if(isConfigMaterial(material))
+                    configUpdateQueue.post(new MaterialUpdateMessage(material, trackingId));
+                else
+                    updateQueue.post(new MaterialUpdateMessage(material, trackingId));
             } catch (RuntimeException e) {
                 inProgress.remove(material);
                 throw e;
@@ -162,6 +174,10 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
                         general(scope)));
             }
         }
+    }
+
+    private boolean isConfigMaterial(Material material) {
+        return watchList.hasConfigRepoWithFingerprint(material.getFingerprint());
     }
 
     private Long getMaterialUpdateInActiveTimeoutInMillis() {
@@ -196,6 +212,12 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
         }
     }
 
+    @Override
+    public void onPipelineConfigChange(PipelineConfig pipelineConfig, String group) {
+        onConfigChange(goConfigService.getCurrentConfig());
+    }
+
+
     ProcessManager getProcessManager() {
         return ProcessManager.getInstance();
     }
@@ -228,5 +250,15 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
         if (forceLoad || schedulableMaterials == null) {
             schedulableMaterials = materialConfigConverter.toMaterials(goConfigService.getSchedulableMaterials());
         }
+    }
+
+    //used in tests
+    public boolean isInProgress(Material material) {
+        for(Material m : this.inProgress.keySet())
+        {
+            if(m.isSameFlyweight(material))
+                return true;
+        }
+        return false;
     }
 }

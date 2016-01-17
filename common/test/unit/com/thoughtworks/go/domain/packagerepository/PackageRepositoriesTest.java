@@ -1,18 +1,18 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.domain.packagerepository;
 
@@ -36,6 +36,7 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PackageRepositoriesTest {
@@ -70,22 +71,29 @@ public class PackageRepositoriesTest {
         repo1.getPackages().addAll(asList(packageDefinitionOne, packageDefinitionTwo));
 
         PackageRepository repo2 = PackageRepositoryMother.create("repo-id2", "repo2", "plugin-id", "1.0", null);
-        PackageDefinition packageDefinitionThree = PackageDefinitionMother.create("pid1", repo2);
-        PackageDefinition packageDefinitionFour = PackageDefinitionMother.create("pid2", repo2);
+        PackageDefinition packageDefinitionThree = PackageDefinitionMother.create("pid3", repo2);
+        PackageDefinition packageDefinitionFour = PackageDefinitionMother.create("pid4", repo2);
         repo2.getPackages().addAll(asList(packageDefinitionThree, packageDefinitionFour));
 
 
         PackageRepositories packageRepositories = new PackageRepositories(repo1, repo2);
-        PackageRepository actual = packageRepositories.findPackageRepositoryHaving("pid1");
 
-        assertThat(actual, is(repo1));
+        assertThat(packageRepositories.findPackageRepositoryHaving("pid3"), is(repo2));
+        assertThat(packageRepositories.findPackageRepositoryWithPackageIdOrBomb("pid3"), is(repo2));
+    }
+
+    @Test
+    public void shouldReturnNullWhenRepositoryForGivenPackageNotFound() throws Exception {
+        PackageRepositories packageRepositories = new PackageRepositories();
+        assertThat(packageRepositories.findPackageRepositoryHaving("invalid"), is(nullValue()));
     }
 
     @Test
     public void shouldThrowExceptionWhenRepositoryForGivenPackageNotFound() throws Exception {
         PackageRepositories packageRepositories = new PackageRepositories();
+
         try {
-            packageRepositories.findPackageRepositoryHaving("invalid");
+            packageRepositories.findPackageRepositoryWithPackageIdOrBomb("invalid");
             fail("should have thrown exception for not finding package repository");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(), is("Could not find repository for given package id:[invalid]"));
@@ -104,7 +112,7 @@ public class PackageRepositoriesTest {
     }
 
     @Test
-    public void shouldThrowRuntimeExceptionWhenRepoIdIsNotFound() throws Exception {
+    public void shouldReturnNullExceptionWhenRepoIdIsNotFound() throws Exception {
         PackageRepositories packageRepositories = new PackageRepositories();
         try {
             packageRepositories.removePackageRepository("repo1");
@@ -168,10 +176,29 @@ public class PackageRepositoriesTest {
         assertThat(definition4.getFingerprint(AbstractMaterialConfig.FINGERPRINT_DELIMITER).equals(definition1.getFingerprint(AbstractMaterialConfig.FINGERPRINT_DELIMITER)), is(false));
     }
 
+    @Test
+    public void shouldGetPackageDefinitionForGivenPackageId() throws Exception {
+        PackageRepository repo1 = PackageRepositoryMother.create("repo-id1", "repo1", "plugin-id", "1.0", null);
+        PackageDefinition packageDefinitionOne = PackageDefinitionMother.create("pid1", repo1);
+        PackageDefinition packageDefinitionTwo = PackageDefinitionMother.create("pid2", repo1);
+        repo1.getPackages().addAll(asList(packageDefinitionOne, packageDefinitionTwo));
+
+        PackageRepository repo2 = PackageRepositoryMother.create("repo-id2", "repo2", "plugin-id", "1.0", null);
+        PackageDefinition packageDefinitionThree = PackageDefinitionMother.create("pid3", repo2);
+        PackageDefinition packageDefinitionFour = PackageDefinitionMother.create("pid4", repo2);
+        repo2.getPackages().addAll(asList(packageDefinitionThree, packageDefinitionFour));
+
+
+        PackageRepositories packageRepositories = new PackageRepositories(repo1, repo2);
+        assertThat(packageRepositories.findPackageDefinitionWith("pid3"), is(packageDefinitionThree));
+        assertThat(packageRepositories.findPackageDefinitionWith("pid5"), is(nullValue()));
+    }
+
     @Before
     public void setup() throws Exception {
         RepositoryMetadataStoreHelper.clear();
     }
+
     @After
     public void tearDown() throws Exception {
         RepositoryMetadataStoreHelper.clear();

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-define(['lodash', 'string-plus'], function (_, s) {
+define(['lodash', 'string-plus', 'mithril'], function (_, s, m) {
 
   var Mixins = {};
 
@@ -57,7 +57,47 @@ define(['lodash', 'string-plus'], function (_, s) {
     this.uuid = Mixins.GetterSetter(this.constructor.modelType + '-' + s.uuid());
   };
 
+  Mixins.HasEncryptedAttribute = function (options) {
+    var _value          = options.attribute,
+        name            = options.name,
+        capitalizedName = _.capitalize(name);
+
+    this[name] = function () {
+      return _value().value.apply(_value(), arguments);
+    };
+
+    this['isSecure' + capitalizedName] = function () {
+      return _value().isSecure();
+    };
+
+    this['isPlain' + capitalizedName] = function () {
+      return _value().isPlain();
+    };
+
+    this['edit' + capitalizedName] = function () {
+      _value().edit();
+    };
+
+    this['isDirty' + capitalizedName] = function () {
+      return _value().isDirty();
+    };
+
+    this['isEditing' + capitalizedName] = function () {
+      return _value().isEditing();
+    };
+
+    this['resetToOriginal' + capitalizedName] = function () {
+      return _value().resetToOriginal();
+    };
+
+    this['becomeSecure' + capitalizedName] = function () {
+      return _value().becomeSecure();
+    }
+
+  };
+
   Mixins.HasMany = function (options) {
+    Mixins.HasUUID.call(this);
     var factory               = options.factory;
     var associationName       = options.as;
     var associationNamePlural = s.defaultToIfBlank(options.plural, options.as + 's');
@@ -82,8 +122,8 @@ define(['lodash', 'string-plus'], function (_, s) {
       return instance;
     };
 
-    this['remove' + associationName] = function (variable) {
-      _.remove(collection(), variable);
+    this['remove' + associationName] = function (thing) {
+      _.remove(collection(), thing);
     };
 
     this['first' + associationName] = function () {
@@ -120,6 +160,10 @@ define(['lodash', 'string-plus'], function (_, s) {
 
     this['find' + associationName] = function (cb, thisArg) {
       return _.find(collection(), cb, thisArg);
+    };
+
+    this['filter' + associationName] = function (cb, thisArg) {
+      return _.filter(collection(), cb, thisArg);
     };
 
     this['map' + associationNamePlural] = function (cb, thisArg) {
@@ -182,17 +226,19 @@ define(['lodash', 'string-plus'], function (_, s) {
   Mixins.Validations = {};
 
   Mixins.ErrorMessages = {
-    duplicate:     function (attribute) {
+    duplicate:            function (attribute) {
       return s.humanize(attribute) + " is a duplicate";
     },
-    mustBePresent: function (attribute) {
+    mustBePresent:        function (attribute) {
       return s.humanize(attribute).replace(/\bxpath\b/i, 'XPath').replace(/\burl\b/i, 'URL') + " must be present";
     },
-    mustBeAUrl:    function (attribute) {
+    mustBeAUrl:           function (attribute) {
       return s.humanize(attribute) + " must be a valid http(s) url";
     },
-
-    mustContainString: function(attribute, string){
+    mustBePositiveNumber: function (attribute) {
+      return s.humanize(attribute) + " must be a positive integer";
+    },
+    mustContainString:    function (attribute, string) {
       return s.humanize(attribute) + " must contain the string '" + string + "'";
     }
   };

@@ -20,16 +20,15 @@ import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.WildcardScanner;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.domain.config.ConfigurationProperty;
-import com.thoughtworks.go.util.FileUtil;
+import org.apache.log4j.Logger;
 import org.jdom.input.JDOMParseException;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class XmlPartialConfigProvider implements PartialConfigProvider {
+    private static final Logger LOGGER = Logger.getLogger(XmlPartialConfigProvider.class);
 
     public static final String ProviderName = "gocd-xml";
 
@@ -48,11 +47,11 @@ public class XmlPartialConfigProvider implements PartialConfigProvider {
 
         // if context had changed files list then we could parse only new content
 
-        PartialConfig[] allFragments = ParseFiles(allFiles);
+        PartialConfig[] allFragments = parseFiles(allFiles);
 
         PartialConfig partialConfig = new PartialConfig();
 
-        CollectFragments(allFragments, partialConfig);
+        collectFragments(allFragments, partialConfig);
 
         partialConfig.validatePart();
 
@@ -81,7 +80,7 @@ public class XmlPartialConfigProvider implements PartialConfigProvider {
         return scanner.getFiles();
     }
 
-    private void CollectFragments(PartialConfig[] allFragments, PartialConfig partialConfig) {
+    private void collectFragments(PartialConfig[] allFragments, PartialConfig partialConfig) {
         for(PartialConfig frag : allFragments)
         {
             for(PipelineConfigs pipesInGroup : frag.getGroups())
@@ -98,18 +97,19 @@ public class XmlPartialConfigProvider implements PartialConfigProvider {
         }
     }
 
-    public PartialConfig[] ParseFiles(File[] allFiles) {
+    public PartialConfig[] parseFiles(File[] allFiles) {
         PartialConfig[] parts = new PartialConfig[allFiles.length];
         for(int i = 0; i < allFiles.length; i++){
-            parts[i] = ParseFile(allFiles[i]);
+            parts[i] = parseFile(allFiles[i]);
         }
 
         return parts;
     }
 
-    public PartialConfig ParseFile(File file) {
+    public PartialConfig parseFile(File file) {
+        FileInputStream inputStream = null;
         try {
-            final FileInputStream inputStream = new FileInputStream(file);
+            inputStream = new FileInputStream(file);
             return loader.fromXmlPartial(inputStream, PartialConfig.class);
         }
         catch (JDOMParseException jdomex)
@@ -123,6 +123,15 @@ public class XmlPartialConfigProvider implements PartialConfigProvider {
         catch (Exception ex)
         {
             throw new RuntimeException("Failed to parse xml file in configuration repository",ex);
+        }
+        finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    LOGGER.error("Failed to close file: " + file, e);
+                }
+            }
         }
     }
 }

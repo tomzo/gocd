@@ -1,18 +1,18 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.remote.work;
 
@@ -102,7 +102,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldUploadEachMatchedFile() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "**/*.png", "mypic"));
+        artifactPlans.add(new ArtifactPlan("**/*.png", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans, new String[]{"logs/pic/fail.png", "logs/pic/pass.png", "README"});
 
@@ -121,7 +121,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldUploadMatchedFolder() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "**/*", "mypic"));
+        artifactPlans.add(new ArtifactPlan("**/*", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic/fail.png", "logs/pic/pass.png", "README"});
@@ -145,7 +145,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldNotUploadFileContainingFolderAgain() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "logs/pic/*.png", "mypic"));
+        artifactPlans.add(new ArtifactPlan("logs/pic/*.png", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic/fail.png", "logs/pic/pass.png", "README"});
@@ -167,11 +167,11 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldUploadFolderWhenMatchedWithWildCards() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "logs/pic-*", "mypic"));
+        artifactPlans.add(new ArtifactPlan("logs/pic-*", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic-1/fail.png", "logs/pic-1/pass.png", "logs/pic-2/cancel.png", "logs/pic-2/complete.png", "README"});
-    
+
         BuildWork work = new BuildWork(buildAssigment);
         GoArtifactsManipulatorStub manipulator = new GoArtifactsManipulatorStub();
 
@@ -180,7 +180,6 @@ public class BuildWorkArtifactUploadingTest {
                 manipulator, environmentVariableContext, AgentRuntimeInfo.fromAgent(agentIdentifier, "cookie", null), packageAsRepositoryExtension, scmExtension, taskExtension);
 
         List<UploadEntry> entries = manipulator.uploadEntries();
-        System.out.println(entries);
 
         assertThat(entries, not(uploadFileToDestination(new File(buildWorkingDirectory.getPath()+ "/logs/pic-1/pass.png"), "mypic")));
         assertThat(entries, not(uploadFileToDestination(new File(buildWorkingDirectory.getPath()+ "/logs/pic-1/fail.png"), "mypic")));
@@ -193,7 +192,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldUploadFolderWhenDirectMatch() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "logs/pic-1", "mypic"));
+        artifactPlans.add(new ArtifactPlan("logs/pic-1", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic-1/fail.png", "logs/pic-1/pass.png", "logs/pic-2/cancel.png", "logs/pic-2/complete.png", "README"});
@@ -213,7 +212,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldUploadFolderWhenTrimedPathDirectMatch() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "logs/pic-1 ", "mypic"));
+        artifactPlans.add(new ArtifactPlan("logs/pic-1 ", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic-1/fail.png", "logs/pic-1/pass.png", "logs/pic-2/cancel.png", "logs/pic-2/complete.png", "README"});
@@ -233,7 +232,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldFailBuildWhenNothingMatched() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "logs/picture", "mypic"));
+        artifactPlans.add(new ArtifactPlan("logs/picture", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic-1/fail.png", "logs/pic-1/pass.png", "logs/pic-2/cancel.png", "logs/pic-2/complete.png", "README"});
@@ -257,7 +256,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldFailBuildWhenSourceDirectoryDoesNotExist() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "not-Exist-Folder", "mypic"));
+        artifactPlans.add(new ArtifactPlan("not-Exist-Folder", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic-1/fail.png", "logs/pic-1/pass.png", "logs/pic-2/cancel.png", "logs/pic-2/complete.png", "README"});
@@ -281,7 +280,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldFailBuildWhenNothingMatchedUsingMatcherStartDotStart() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "target/pkg/*.*", "MYDEST"));
+        artifactPlans.add(new ArtifactPlan("target/pkg/*.*", "MYDEST"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans, new String[]{"target/pkg/"});
 
@@ -305,7 +304,7 @@ public class BuildWorkArtifactUploadingTest {
     @Test
     public void shouldReportUploadFailuresWhenTheyHappen() throws Exception {
         ArtifactPlans artifactPlans = new ArtifactPlans();
-        artifactPlans.add(new ArtifactPlan(ArtifactType.file, "**/*.png", "mypic"));
+        artifactPlans.add(new ArtifactPlan("**/*.png", "mypic"));
 
         BuildAssignment buildAssigment = createAssignment(artifactPlans,
                 new String[]{"logs/pic/pass.png", "logs/pic-1/pass.png"});
@@ -319,7 +318,6 @@ public class BuildWorkArtifactUploadingTest {
                 AgentRuntimeInfo.fromAgent(agentIdentifier, "cookie", null), packageAsRepositoryExtension, scmExtension, taskExtension);
 
         List<UploadEntry> entries = manipulator.uploadEntries();
-        System.out.println(entries);
         assertThat(entries.isEmpty(), is(true));
         assertThat(manipulator.consoleOut(), containsString("Failed to upload [**/*.png]"));
     }

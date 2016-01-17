@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.config.materials;
 
@@ -26,6 +26,9 @@ import com.thoughtworks.go.config.IgnoreTraversal;
 import com.thoughtworks.go.config.PipelineConfig;
 import com.thoughtworks.go.config.ValidationContext;
 import com.thoughtworks.go.domain.packagerepository.PackageDefinition;
+import com.thoughtworks.go.domain.packagerepository.PackageRepository;
+import com.thoughtworks.go.domain.scm.SCM;
+import com.thoughtworks.go.util.StringUtil;
 import org.apache.commons.lang.StringUtils;
 
 @ConfigTag(value = "package")
@@ -58,6 +61,10 @@ public class PackageMaterialConfig extends AbstractMaterialConfig {
 
     public String getPackageId() {
         return packageId;
+    }
+
+    public void setPackageId(String packageId) {
+        this.packageId = packageId;
     }
 
     public String getPluginId() {
@@ -101,6 +108,18 @@ public class PackageMaterialConfig extends AbstractMaterialConfig {
     protected void validateConcreteMaterial(ValidationContext validationContext) {
         if (StringUtils.isBlank(packageId)) {
             addError(PACKAGE_ID, "Please select a repository and package");
+        }
+    }
+
+    @Override
+    protected void validateExtras(ValidationContext validationContext) {
+        if (!StringUtils.isBlank(packageId)) {
+            PackageRepository packageRepository = validationContext.findPackageById(packageId);
+            if (packageRepository == null) {
+                addError(PACKAGE_ID, String.format("Could not find repository for given package id:[%s]", packageId));
+            } else if (!packageRepository.doesPluginExist()) {
+                addError(PACKAGE_ID, String.format("Could not find plugin for given package id:[%s].", packageId));
+            }
         }
     }
 
@@ -160,6 +179,11 @@ public class PackageMaterialConfig extends AbstractMaterialConfig {
     }
 
     @Override
+    public void setAutoUpdate(boolean autoUpdate) {
+        packageDefinition.setAutoUpdate(autoUpdate);
+    }
+
+    @Override
     public Boolean isUsedInFetchArtifact(PipelineConfig pipelineConfig) {
         return Boolean.FALSE;
     }
@@ -189,10 +213,10 @@ public class PackageMaterialConfig extends AbstractMaterialConfig {
 
         PackageMaterialConfig that = (PackageMaterialConfig) o;
 
-        if (packageDefinition == null) {
+        if (packageDefinition != null ? !packageDefinition.equals(that.packageDefinition) : that.packageDefinition != null) {
             return false;
         }
-        return this.getFingerprint().equals(that.getFingerprint());
+        return super.equals(that);
     }
 
     @Override
