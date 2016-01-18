@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,33 +12,35 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.config;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.listener.ConfigChangedListener;
+import com.thoughtworks.go.listener.PipelineConfigChangedListener;
+import com.thoughtworks.go.server.domain.Username;
+import com.thoughtworks.go.server.service.PipelineConfigService;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import static com.thoughtworks.go.util.ExceptionUtils.bomb;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @understands when to reload the config file or other config source
  */
 @Component
 public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, PartialConfigChangedListener {
-    private static final Logger LOGGER = Logger.getLogger(MergedGoConfig.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CachedFileGoConfig.class);
 
     public static final String INVALID_CRUISE_CONFIG_MERGE = "Invalid Merged Configuration";
 
@@ -66,11 +68,11 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
 
     @Override
     public void onConfigChange(CruiseConfig newCruiseConfig) {
-        this.tryAssembleMergedConfig(this.fileService.loadConfigHolder(),this.partialConfig.lastPartials());
+        this.tryAssembleMergedConfig(this.fileService.loadConfigHolder(), this.partialConfig.lastPartials());
     }
     @Override
     public void onPartialConfigChanged(List<PartialConfig> partials) {
-        this.tryAssembleMergedConfig(this.fileService.loadConfigHolder(),partials);
+        this.tryAssembleMergedConfig(this.fileService.loadConfigHolder(), partials);
     }
 
     /**
@@ -97,9 +99,9 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
                 newConfigHolder = new GoConfigHolder(merge, forEdit);
             }
             // save to cache and fire event
-            this.saveValidConfigToCache(newConfigHolder);
+            this.saveValidConfigToCacheAndNotifyConfigChangeListeners(newConfigHolder);
         } catch (Exception e) {
-            LOGGER.error(String.format("Failed validation of merged configuration: %s", e));
+            LOGGER.error("Failed validation of merged configuration: {}", e.toString());
             saveConfigError(e);
         }
     }
@@ -143,7 +145,50 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
         return this.fileService.writeWithLock(updateConfigCommand,new GoConfigHolder(this.currentConfig,this.currentConfigForEdit));
     }
 
+    @Override
+    public synchronized void writePipelineWithLock(PipelineConfig pipelineConfig, PipelineConfigService.SaveCommand saveCommand, Username currentUser) {
+        CachedFileGoConfig.PipelineConfigSaveResult saveResult = fileService.writePipelineWithLock(pipelineConfig, this.configHolder, saveCommand, currentUser);
+        saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(saveResult);
+    }
+
+    private void saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(CachedFileGoConfig.PipelineConfigSaveResult saveResult) {
+        saveValidConfigToCache(saveResult.getConfigHolder());
+        LOGGER.info("About to notify pipeline config listeners");
+
+        for (ConfigChangedListener listener : listeners) {
+            if(listener instanceof PipelineConfigChangedListener){
+                try {
+                    long startTime = System.currentTimeMillis();
+                    ((PipelineConfigChangedListener) listener).onPipelineConfigChange(saveResult.getPipelineConfig(), saveResult.getGroup());
+                    LOGGER.debug("Notifying {} took (in ms): {}", listener.getClass(), (System.currentTimeMillis() - startTime));
+                } catch (Exception e) {
+                    LOGGER.error("Failed to fire config changed event for listener: " + listener, e);
+                }
+
+            }
+        }
+        LOGGER.info("Finished notifying pipeline config listeners");
+    }
+
     private synchronized void saveValidConfigToCache(GoConfigHolder configHolder) {
+        if (configHolder != null) {
+            LOGGER.debug("[Config Save] Saving config to the cache");
+            this.lastException = null;
+            this.configHolder = configHolder;
+            this.currentConfig = this.configHolder.config;
+            this.currentConfigForEdit = this.configHolder.configForEdit;
+            serverHealthService.update(ServerHealthState.success(invalidConfigType()));
+        }
+    }
+    private synchronized void saveValidConfigToCacheAndNotifyConfigChangeListeners(GoConfigHolder configHolder) {
+        saveValidConfigToCache(configHolder);
+        if(configHolder!=null) {
+            notifyListeners(currentConfig);
+        }
+    }
+
+
+    private synchronized void saveValidConfigToCacheTomas(GoConfigHolder configHolder) {
         //this operation still exists, it only works differently
         // we validate entire merged cruise config
         // then we keep new merged cruise config in memory
@@ -185,13 +230,15 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
     }
 
     private synchronized void notifyListeners(CruiseConfig newCruiseConfig) {
+        LOGGER.info("About to notify config listeners");
         for (ConfigChangedListener listener : listeners) {
             try {
                 listener.onConfigChange(newCruiseConfig);
             } catch (Exception e) {
-                LOGGER.error("failed to fire config changed event for listener: " + listener, e);
+                LOGGER.error("Failed to fire config changed event for listener: " + listener, e);
             }
         }
+        LOGGER.info("Finished notifying all listeners");
     }
 
     /**
@@ -216,6 +263,4 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
     public boolean hasListener(ConfigChangedListener listener) {
         return this.listeners.contains(listener);
     }
-
-
 }

@@ -21,12 +21,12 @@ import java.util.Set;
 
 import static com.thoughtworks.go.helper.PipelineConfigMother.createGroup;
 import static com.thoughtworks.go.helper.PipelineConfigMother.createPipelineConfig;
-import static junit.framework.TestCase.fail;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 public class MergeCruiseConfigTest extends CruiseConfigTestBase {
 
@@ -342,8 +342,8 @@ public class MergeCruiseConfigTest extends CruiseConfigTestBase {
                 PartialConfigMother.withPipelineInGroup("pipe2", "g2"),PartialConfigMother.withPipelineInGroup("pipe3", "g3"));
 
         assertThat(cruiseConfig.getAllPipelineNames(), contains(
-                new CaseInsensitiveString("pipe2"),
                 new CaseInsensitiveString("pipe1"),
+                new CaseInsensitiveString("pipe2"),
                 new CaseInsensitiveString("pipe3")));
     }
     @Test

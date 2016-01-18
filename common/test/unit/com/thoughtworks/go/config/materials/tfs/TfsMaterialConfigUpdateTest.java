@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,16 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.config.materials.tfs;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.thoughtworks.go.config.CaseInsensitiveString;
-import com.thoughtworks.go.config.ValidationContext;
+import com.thoughtworks.go.config.ConfigSaveValidationContext;
 import com.thoughtworks.go.config.materials.AbstractMaterialConfig;
 import com.thoughtworks.go.config.materials.Filter;
 import com.thoughtworks.go.config.materials.IgnoredFiles;
@@ -33,10 +29,15 @@ import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -116,7 +117,7 @@ public class TfsMaterialConfigUpdateTest {
     @Test
     public void validate_shouldEnsureMandatoryFieldsAreNotBlank() {
         TfsMaterialConfig tfsMaterialConfig = new TfsMaterialConfig(new GoCipher(), new UrlArgument(""), "", "CORPORATE", "", "");
-        tfsMaterialConfig.validate(new ValidationContext(null));
+        tfsMaterialConfig.validate(new ConfigSaveValidationContext(null));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.URL), is("URL cannot be blank"));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.USERNAME), is("Username cannot be blank"));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.PROJECT_PATH), is("Project Path cannot be blank"));
@@ -126,11 +127,11 @@ public class TfsMaterialConfigUpdateTest {
     public void validate_shouldEnsureMaterialNameIsValid() {
         TfsMaterialConfig tfsMaterialConfig = new TfsMaterialConfig(new GoCipher(), new UrlArgument("http://10.4.4.101:8080/tfs/Sample"), "loser", "CORPORATE", "passwd", "walk_this_path");
 
-        tfsMaterialConfig.validate(new ValidationContext(null));
+        tfsMaterialConfig.validate(new ConfigSaveValidationContext(null));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.MATERIAL_NAME), is(nullValue()));
 
         tfsMaterialConfig.setName(new CaseInsensitiveString(".bad-name-with-dot"));
-        tfsMaterialConfig.validate(new ValidationContext(null));
+        tfsMaterialConfig.validate(new ConfigSaveValidationContext(null));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.MATERIAL_NAME),
                 is("Invalid material name '.bad-name-with-dot'. This must be alphanumeric and can contain underscores and periods (however, it cannot start with a period). The maximum allowed length is 255 characters."));
     }
@@ -139,7 +140,7 @@ public class TfsMaterialConfigUpdateTest {
     public void validate_shouldEnsureDestFilePathIsValid() {
         TfsMaterialConfig tfsMaterialConfig = new TfsMaterialConfig(new GoCipher(), new UrlArgument("http://10.4.4.101:8080/tfs/Sample"), "loser", "CORPORATE", "passwd", "walk_this_path");
         tfsMaterialConfig.setConfigAttributes(Collections.singletonMap(ScmMaterialConfig.FOLDER, "../a"));
-        tfsMaterialConfig.validate(new ValidationContext(null));
+        tfsMaterialConfig.validate(new ConfigSaveValidationContext(null));
         assertThat(tfsMaterialConfig.errors().on(TfsMaterialConfig.FOLDER), is("Dest folder '../a' is not valid. It must be a sub-directory of the working folder."));
     }
 
@@ -209,5 +210,31 @@ public class TfsMaterialConfigUpdateTest {
         catch (Exception e) {
             assertThat(e.getMessage(), is("Password encryption failed. Please verify your cipher key."));
         }
+    }
+
+    @Test
+    public void shouldReturnTheUrl() {
+        String url = "git@github.com/my/repo";
+        TfsMaterialConfig config = new TfsMaterialConfig();
+
+        config.setUrl(url);
+
+        assertThat(config.getUrl(), is(url));
+    }
+
+    @Test
+    public void shouldReturnNullIfUrlForMaterialNotSpecified() {
+        TfsMaterialConfig config = new TfsMaterialConfig();
+
+        assertNull(config.getUrl());
+    }
+
+    @Test
+    public void shouldHandleNullWhenSettingUrlForAMaterial() {
+        TfsMaterialConfig config = new TfsMaterialConfig();
+
+        config.setUrl(null);
+
+        assertNull(config.getUrl());
     }
 }

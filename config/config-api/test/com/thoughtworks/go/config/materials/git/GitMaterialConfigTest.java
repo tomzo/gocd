@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,22 +12,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.config.materials.git;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.thoughtworks.go.config.CaseInsensitiveString;
-import com.thoughtworks.go.config.ValidationContext;
+import com.thoughtworks.go.config.ConfigSaveValidationContext;
 import com.thoughtworks.go.config.materials.AbstractMaterialConfig;
 import com.thoughtworks.go.config.materials.Filter;
 import com.thoughtworks.go.config.materials.IgnoredFiles;
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 public class GitMaterialConfigTest {
@@ -56,7 +57,7 @@ public class GitMaterialConfigTest {
     @Test
     public void validate_shouldEnsureUrlIsNotBlank() {
         GitMaterialConfig gitMaterialConfig = new GitMaterialConfig("");
-        gitMaterialConfig.validate(new ValidationContext(null));
+        gitMaterialConfig.validate(new ConfigSaveValidationContext(null));
         assertThat(gitMaterialConfig.errors().on(GitMaterialConfig.URL), is("URL cannot be blank"));
     }
 
@@ -65,5 +66,39 @@ public class GitMaterialConfigTest {
         GitMaterialConfig gitMaterialConfig = new GitMaterialConfig("");
         gitMaterialConfig.setConfigAttributes(null);
         assertThat(gitMaterialConfig, is(new GitMaterialConfig("")));
+    }
+
+    @Test
+    public void shouldReturnTheUrl() {
+        String url = "git@github.com/my/repo";
+        GitMaterialConfig config = new GitMaterialConfig(url);
+
+        assertThat(config.getUrl(), is(url));
+    }
+
+    @Test
+    public void shouldReturnNullIfUrlForMaterialNotSpecified() {
+        GitMaterialConfig config = new GitMaterialConfig();
+
+        assertNull(config.getUrl());
+    }
+
+    @Test
+    public void shouldSetUrlForAMaterial() {
+        String url = "git@github.com/my/repo";
+        GitMaterialConfig config = new GitMaterialConfig();
+
+        config.setUrl(url);
+
+        assertThat(config.getUrl(), is(url));
+    }
+
+    @Test
+    public void shouldHandleNullWhenSettingUrlForAMaterial() {
+        GitMaterialConfig config = new GitMaterialConfig();
+
+        config.setUrl(null);
+
+        assertNull(config.getUrl());
     }
 }

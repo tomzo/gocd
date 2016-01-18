@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 ThoughtWorks, Inc.
+ * Copyright 2016 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,19 @@
  * limitations under the License.
  */
 
-define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s, Mixins) {
+define(['mithril', 'lodash', 'string-plus', './model_mixins', './encrypted_value'], function (m, _, s, Mixins, EncryptedValue) {
+
+  function plainOrCipherValue(data) {
+    if (data.encryptedPassword) {
+      return new EncryptedValue({cipherText: s.defaultToIfBlank(data.encryptedPassword, '')});
+    } else {
+      return new EncryptedValue({clearText: s.defaultToIfBlank(data.password, '')});
+    }
+  }
 
   var Materials = function (data) {
     Mixins.HasMany.call(this, {factory: Materials.create, as: 'Material', collection: data, uniqueOn: 'name'});
+    Mixins.HasUUID.call(this);
   };
 
   Materials.create = function (data) {
@@ -28,14 +37,24 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     this.constructor.modelType = 'materialFilter';
     Mixins.HasUUID.call(this);
 
-    this.ignore = m.prop(s.defaultToIfBlank(data.ignore, []));
+    this.ignore = s.withNewJSONImpl(m.prop(s.defaultToIfBlank(data.ignore, '')), s.stringToArray);
+
+    this.isBlank = function () {
+      return s.isBlank(this.ignore());
+    };
 
     this.toJSON = function () {
-      return {
-        filter: {
-          ignore: this.ignore()
-        }
-      };
+      if (this.isBlank()) {
+        return {
+          filter: null
+        };
+      } else {
+        return {
+          filter: {
+            ignore: this.ignore.toJSON()
+          }
+        };
+      }
     };
   };
 
@@ -50,12 +69,10 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
   Materials.Material = function (type, hasFilter, data) {
     this.constructor.modelType = 'material';
     Mixins.HasUUID.call(this);
-
-    this.parent = Mixins.GetterSetter();
-
-    this.type       = m.prop(type);
-    this.name       = m.prop(s.defaultToIfBlank(data.name, ''));
-    this.autoUpdate = m.prop(data.autoUpdate);
+    this.parent           = Mixins.GetterSetter();
+    this.type             = m.prop(type);
+    this.name             = m.prop(s.defaultToIfBlank(data.name, ''));
+    this.autoUpdate       = m.prop(data.autoUpdate);
 
     if (hasFilter) {
       this.filter = m.prop(s.defaultToIfBlank(data.filter, new Materials.Filter(s.defaultToIfBlank(data.filter, {}))));
@@ -66,7 +83,6 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
         this.parent().validateUniqueMaterialName(this, errors);
       }
     };
-
 
     this.toJSON = function () {
       var attrs = {
@@ -84,10 +100,46 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
       };
     };
 
+    this.testConnection = function (pipelineName) {
+      var self = this;
+
+      var xhrConfig = function(xhr) {
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("Accept", "application/vnd.go.cd.v1+json");
+      };
+
+      var payload = function () {
+        return _.merge(self.toJSON(), {pipeline_name: pipelineName()});
+      };
+
+      var stringfy = function (data) {
+        return JSON.stringify(data, s.snakeCaser)
+      };
+
+      var onError = function (response) {
+        return response.message ? response.message : 'There was an unknown error while checking connection';
+      };
+
+      return m.request({
+        url:         Routes.apiv1MaterialTestPath(),
+        method:      'POST',
+        config:      xhrConfig,
+        data:        payload(),
+        unwrapError: onError,
+        serialize:   stringfy
+      });
+    };
+
     this._attributesToJSON = function () {
       throw new Error("Subclass responsibility!");
     };
 
+    this._passwordHash = function() {
+      if (this.isPlainPasswordValue() || this.isDirtyPasswordValue()) {
+        return { password: this.passwordValue() };
+      }
+      return { encryptedPassword: this.passwordValue() };
+    };
   };
 
   Mixins.fromJSONCollection({
@@ -101,8 +153,9 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     this.destination    = m.prop(s.defaultToIfBlank(data.destination, ''));
     this.url            = m.prop(s.defaultToIfBlank(data.url, ''));
     this.username       = m.prop(s.defaultToIfBlank(data.username, ''));
-    this.password       = m.prop(s.defaultToIfBlank(data.password, ''));
+    var _password       = m.prop(plainOrCipherValue(data));
     this.checkExternals = m.prop(data.checkExternals);
+    Mixins.HasEncryptedAttribute.call(this, {attribute: _password, name: 'passwordValue'});
 
     this.validate = function () {
       var errors = new Mixins.Errors();
@@ -117,26 +170,28 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     };
 
     this._attributesToJSON = function () {
-      return {
+      var attrs = {
         destination:    this.destination(),
         url:            this.url(),
         username:       this.username(),
-        password:       this.password(),
         checkExternals: this.checkExternals()
       };
+
+      return _.merge(attrs, this._passwordHash());
     };
   };
 
   Materials.Material.SVN.fromJSON = function (data) {
     return new Materials.Material.SVN({
-      url:            data.url,
-      username:       data.username,
-      password:       data.password,
-      checkExternals: data.check_externals,
-      destination:    data.destination,
-      name:           data.name,
-      autoUpdate:     data.auto_update,
-      filter:         Materials.Filter.fromJSON(data.filter)
+      url:               data.url,
+      username:          data.username,
+      password:          data.password,
+      encryptedPassword: data.encrypted_password,
+      checkExternals:    data.check_externals,
+      destination:       data.destination,
+      name:              data.name,
+      autoUpdate:        data.auto_update,
+      filter:            Materials.Filter.fromJSON(data.filter)
     });
   };
 
@@ -221,10 +276,10 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     this.destination = m.prop(s.defaultToIfBlank(data.destination, ''));
     this.port        = m.prop(s.defaultToIfBlank(data.port, ''));
     this.username    = m.prop(s.defaultToIfBlank(data.username, ''));
-    this.password    = m.prop(s.defaultToIfBlank(data.password, ''));
+    var _password    = m.prop(plainOrCipherValue(data));
     this.view        = m.prop(s.defaultToIfBlank(data.view, ''));
     this.useTickets  = m.prop(data.useTickets);
-
+    Mixins.HasEncryptedAttribute.call(this, {attribute: _password, name: 'passwordValue'});
 
     this.validate = function () {
       var errors = new Mixins.Errors();
@@ -243,29 +298,31 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     };
 
     this._attributesToJSON = function () {
-      return {
+      var attrs = {
         destination: this.destination(),
         port:        this.port(),
         username:    this.username(),
-        password:    this.password(),
         view:        this.view(),
         useTickets:  this.useTickets()
       };
+
+      return _.merge(attrs, this._passwordHash());
     };
 
   };
 
   Materials.Material.Perforce.fromJSON = function (data) {
     return new Materials.Material.Perforce({
-      port:        data.port,
-      username:    data.username,
-      password:    data.password,
-      useTickets:  data.use_tickets,
-      destination: data.destination,
-      view:        data.view,
-      autoUpdate:  data.auto_update,
-      name:        data.name,
-      filter:      Materials.Filter.fromJSON(data.filter)
+      port:              data.port,
+      username:          data.username,
+      password:          data.password,
+      encryptedPassword: data.encrypted_password,
+      useTickets:        data.use_tickets,
+      destination:       data.destination,
+      view:              data.view,
+      autoUpdate:        data.auto_update,
+      name:              data.name,
+      filter:            Materials.Filter.fromJSON(data.filter)
     });
   };
 
@@ -275,8 +332,9 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     this.url         = m.prop(s.defaultToIfBlank(data.url, ''));
     this.domain      = m.prop(s.defaultToIfBlank(data.domain, ''));
     this.username    = m.prop(s.defaultToIfBlank(data.username, ''));
-    this.password    = m.prop(s.defaultToIfBlank(data.password, ''));
+    var _password    = m.prop(plainOrCipherValue(data));
     this.projectPath = m.prop(s.defaultToIfBlank(data.projectPath, ''));
+    Mixins.HasEncryptedAttribute.call(this, {attribute: _password, name: 'passwordValue'});
 
     this.validate = function () {
       var errors = new Mixins.Errors();
@@ -299,29 +357,30 @@ define(['mithril', 'lodash', 'string-plus', './model_mixins'], function (m, _, s
     };
 
     this._attributesToJSON = function () {
-      return {
+      var attrs = {
         destination:  this.destination(),
         url:          this.url(),
         domain:       this.domain(),
         username:     this.username(),
-        password:     this.password(),
         project_path: this.projectPath()
       };
-    };
 
+      return _.merge(attrs, this._passwordHash());
+    };
   };
 
   Materials.Material.TFS.fromJSON = function (data) {
     return new Materials.Material.TFS({
-      url:         data.url,
-      domain:      data.domain,
-      username:    data.username,
-      password:    data.password,
-      destination: data.destination,
-      projectPath: data.project_path,
-      autoUpdate:  data.auto_update,
-      name:        data.name,
-      filter:      Materials.Filter.fromJSON(data.filter)
+      url:               data.url,
+      domain:            data.domain,
+      username:          data.username,
+      password:          data.password,
+      encryptedPassword: data.encrypted_password,
+      destination:       data.destination,
+      projectPath:       data.project_path,
+      autoUpdate:        data.auto_update,
+      name:              data.name,
+      filter:            Materials.Filter.fromJSON(data.filter)
     });
   };
 

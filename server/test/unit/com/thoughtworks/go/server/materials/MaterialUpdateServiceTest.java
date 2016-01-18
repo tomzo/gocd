@@ -1,5 +1,5 @@
-/*************************GO-LICENSE-START*********************************
- * Copyright 2014 ThoughtWorks, Inc.
+/*
+ * Copyright 2015 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *************************GO-LICENSE-END***********************************/
+ */
 
 package com.thoughtworks.go.server.materials;
 
-import com.thoughtworks.go.config.BasicCruiseConfig;
-import com.thoughtworks.go.config.CaseInsensitiveString;
-import com.thoughtworks.go.config.CruiseConfig;
+import com.thoughtworks.go.config.*;
+import com.thoughtworks.go.config.materials.MaterialConfigs;
 import com.thoughtworks.go.config.materials.ScmMaterial;
+import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.materials.svn.SvnMaterial;
 import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
 import com.thoughtworks.go.domain.PipelineGroups;
@@ -62,11 +62,14 @@ import static org.mockito.Matchers.anyMap;
 import static org.mockito.Matchers.anySet;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.*;
 
 public class MaterialUpdateServiceTest {
     private MaterialUpdateQueue queue;
     private MaterialUpdateCompletedTopic completed;
+    private ConfigMaterialUpdateQueue configQueue;
+    private GoConfigWatchList watchList;
     private GoConfigService goConfigService;
     private static final SvnMaterialConfig MATERIAL_CONFIG = MaterialConfigsMother.svnMaterialConfig();
     private static final SvnMaterial MATERIAL = MaterialsMother.svnMaterial();
@@ -84,6 +87,8 @@ public class MaterialUpdateServiceTest {
     @Before
     public void setUp() throws Exception {
         queue = mock(MaterialUpdateQueue.class);
+        configQueue = mock(ConfigMaterialUpdateQueue.class);
+        watchList = mock(GoConfigWatchList.class);
         completed = mock(MaterialUpdateCompletedTopic.class);
         goConfigService = mock(GoConfigService.class);
         postCommitHookMaterialType = mock(PostCommitHookMaterialTypeResolver.class);
@@ -92,7 +97,8 @@ public class MaterialUpdateServiceTest {
         metricsProbeService = mock(MetricsProbeService.class);
         materialConfigConverter = mock(MaterialConfigConverter.class);
         MDUPerformanceLogger mduPerformanceLogger = mock(MDUPerformanceLogger.class);
-        service = new MaterialUpdateService(queue, completed, goConfigService, systemEnvironment, serverHealthService, postCommitHookMaterialType, mduPerformanceLogger, materialConfigConverter);
+        service = new MaterialUpdateService(queue,configQueue , completed,watchList, goConfigService, systemEnvironment,
+                serverHealthService, postCommitHookMaterialType, mduPerformanceLogger, materialConfigConverter);
         HashSet<MaterialConfig> materialConfigs = new HashSet(Collections.singleton(MATERIAL_CONFIG));
         HashSet<Material> materials = new HashSet(Collections.singleton(MATERIAL));
         when(goConfigService.getSchedulableMaterials()).thenReturn(materialConfigs);
@@ -113,16 +119,25 @@ public class MaterialUpdateServiceTest {
     }
 
     @Test
-    public void shouldSendMaterialUpdateCheckMessageWhenTimerIsCalled() throws Exception {
+    public void shouldSendMaterialUpdateMessageOnlyToMaterialQueueWhenTimerIsCalled() throws Exception {
         service.onTimer();
         Mockito.verify(queue).post(matchMaterialUpdateMessage(MATERIAL));
+        Mockito.verify(configQueue,times(0)).post(any(MaterialUpdateMessage.class));
+    }
+    @Test
+    public void shouldSendMaterialUpdateMessageOnlyToConfigQueue_WhenTimerIsCalled_AndMaterialIsConfigRepo() throws Exception {
+        when(watchList.hasConfigRepoWithFingerprint(MATERIAL.getFingerprint())).thenReturn(true);
+        service.onTimer();
+        Mockito.verify(configQueue).post(matchMaterialUpdateMessage(MATERIAL));
+        Mockito.verify(queue,times(0)).post(any(MaterialUpdateMessage.class));
     }
 
     @Test
-    public void shouldNotSendMaterialUpdateCheckMessageIfMaterialIsStillBeingChecked() throws Exception {
+    public void shouldNotSendMaterialUpdateMessageIfMaterialIsStillBeingChecked() throws Exception {
         service.onTimer();
         service.onTimer();
         Mockito.verify(queue, new AtMost(1)).post(matchMaterialUpdateMessage(MATERIAL));
+        Mockito.verify(configQueue,times(0)).post(any(MaterialUpdateMessage.class));
     }
 
     @Test
@@ -241,7 +256,7 @@ public class MaterialUpdateServiceTest {
 
         //then
         verify(serverHealthService).removeByScope(HealthStateScope.forMaterialUpdate(material));
-        ArgumentCaptor<ServerHealthState> argumentCaptor = new ArgumentCaptor<ServerHealthState>();
+        ArgumentCaptor<ServerHealthState> argumentCaptor = ArgumentCaptor.forClass(ServerHealthState.class);
         verify(serverHealthService).update(argumentCaptor.capture());
         assertThat(argumentCaptor.getValue().getMessage(), is("Material update for uri hung:"));
         assertThat(argumentCaptor.getValue().getDescription(),
@@ -302,6 +317,19 @@ public class MaterialUpdateServiceTest {
         when(serverHealthService.getAllLogs()).thenReturn(new ServerHealthStates());
         service.onTimer();
         service.onConfigChange(mock(BasicCruiseConfig.class));
+        service.onTimer();
+        verify(goConfigService, times(2)).getSchedulableMaterials();
+    }
+
+    @Test
+    public void shouldClearSchedulableMaterialCacheOnPipelineConfigChange() {
+        when(serverHealthService.getAllLogs()).thenReturn(new ServerHealthStates());
+        when(goConfigService.getCurrentConfig()).thenReturn(mock(CruiseConfig.class));
+        service.onTimer();
+        PipelineConfig pipelineConfig = mock(PipelineConfig.class);
+        when(pipelineConfig.materialConfigs()).thenReturn(new MaterialConfigs(new GitMaterialConfig("url")));
+
+        service.onPipelineConfigChange(pipelineConfig, "g1");
         service.onTimer();
         verify(goConfigService, times(2)).getSchedulableMaterials();
     }

@@ -14,79 +14,180 @@
  * limitations under the License.
  */
 
-define(['mithril', 'lodash', '../helpers/form_helper', '../helpers/tooltips', './environment_variables_config_widget', './tasks_config_widget', './artifacts_config_widget', './properties_config_widget', './tabs_config_widget'], function (m, _, f, tt, EnvironmentVariablesConfigWidget, TasksConfigWidget, ArtifactsConfigWidget, PropertiesConfigWidget, TabsConfigWidget) {
+define([
+  'mithril', 'lodash', 'string-plus', 'jquery',
+  '../helpers/form_helper', '../helpers/tooltips', '../helpers/mithril_component_mixins',
+  'pipeline_configs/models/resources',
+  './environment_variables_config_widget', './tasks_config_widget', './artifacts_config_widget', './properties_config_widget', './tabs_config_widget',
+  'jquery.textcomplete'
+], function (m, _, s, $,
+             f, tt, ComponentMixins,
+             Resources,
+             EnvironmentVariablesConfigWidget, TasksConfigWidget, ArtifactsConfigWidget, PropertiesConfigWidget, TabsConfigWidget) {
+
+  var autoComplete = function (values, model, attrName) {
+    return function (elem, isInitialized) {
+      if (!isInitialized) {
+        var $inputElem = $($(elem).find("input[data-prop-name='" + attrName + "']"));
+
+        $inputElem.textcomplete([
+          {
+            words:   values, //the list of auto-completes
+            match:   /(^|,)\s*([^,]+)$/,
+            index:   2, // use the second match in the regex to extract the search term
+            search:  function (term, callback) {
+              term = term.toLowerCase();
+              callback($.map(this.words, function (word) {
+                return word.toLowerCase().indexOf(term) === 0 ? word : null;
+              }));
+            },
+            replace: function (word) {
+              return '$1' + word + ', ';
+            }
+          }
+        ]);
+
+        $inputElem.on('textComplete:select', function () {
+          model[attrName]($inputElem.val());
+        });
+      }
+    };
+  };
 
   var JobTimeout = {
     view: function (ctrl, args, children) {
       var job       = args.job;
       var radioName = 'radio-' + job.uuid() + '-timeout';
-
-      var isCustomValue = m.prop(false);
-
-      var useValue = function (newValue) {
-        return function (evt) {
-          isCustomValue(false);
-          job.timeout(newValue);
-        };
-      };
-
-      var customValue = function (e) {
-        isCustomValue(false);
-      };
-
-      var noTimeout = function () {
-        return job.timeout() === 0;
-      };
-
-      var defaultTimeout = function () {
-        return _.isUndefined(job.timeout()) || _.isNull(job.timeout());
-      };
-
-      var otherTimeout = function () {
-        return _.isNumber(job.timeout()) && job.timeout() !== 0;
-      };
-
+      var errors    = job.validate(), timeoutError;
+      if (errors.errors('timeout')) {
+        timeoutError = (<small class='error'>{errors.errorsForDisplay('timeout')}</small>)
+      }
       return (
         <div>
-          <label>
-            Timeout
-            <f.tooltip tooltip={{
+          <f.row>
+            <f.column size={12}>
+              <label>
+                Timeout
+                <f.tooltip tooltip={{
                           content: tt.job.timeout,
                           size: 'small',
                           direction: 'bottom'
                         }}
-                       model={job}
-                       attrName='timeout'/>
-          </label>
+                           model={job}
+                           attrName='timeout'/>
+              </label>
+            </f.column>
+          </f.row>
 
-          <div>
-            <input type='radio'
-                   name={radioName}
-                   id={radioName + '-none'}
-                   checked={noTimeout()}
-                   onchange={useValue(0)}/>
-            <label for={radioName + '-none'}>None</label>
+          <f.row>
+            <f.column size={12}>
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-never'}
+                     checked={job.isTimeoutNever()}
+                     onchange={job.timeout.bind(job, 'never')}/>
+              <label for={radioName + '-never'}>Never</label>
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-default'}
+                     checked={job.isTimeoutDefault()}
+                     onchange={job.timeout.bind(job, null)}/>
+              <label for={radioName + '-default'}>Default</label>
 
-            <input type='radio'
-                   name={radioName}
-                   id={radioName + '-default'}
-                   checked={defaultTimeout()}
-                   onchange={useValue(null)}/>
-            <label for={radioName + '-default'}>Default</label>
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-custom'}
+                     checked={!(job.isTimeoutNever()|| job.isTimeoutDefault())}
+                     onchange={job.timeout.bind(job, '')}/>
+              <label for={radioName + '-custom'}>
+                Cancel after
+                <span style={{display: 'inline-table'}}>
+                {m.trust('&nbsp;')}
+                  <input type='number'
+                         min="1"
+                         style={{display: 'inline', width: '60px'}} size={3}
+                         oninput={m.withAttr('value', job.timeout)}
+                         class={timeoutError ? 'error' : ''}
+                         value={(!(job.isTimeoutNever() || job.isTimeoutDefault())) ? job.timeout() : null}/>
+                  {m.trust('&nbsp;')}
+                  minute(s) of inactivity
+                  {timeoutError}
+                  </span>
+              </label>
+            </f.column>
+          </f.row>
+        </div>
+      );
 
-            <input type='radio'
-                   name={radioName}
-                   id={radioName + '-custom'}
-                   checked={otherTimeout()}
-                   onchange={customValue}/>
-            <label for={radioName + '-custom'}>
-              Cancel after{' '}
-              <input type='text'
-                     style={{display: 'inline', width: '50px'}} size={3}
-                     onchange={m.withAttr('value', job.timeout)}
-                     disabled={isCustomValue()}/>{' '}
-              minute(s) of inactivity</label>
-          </div>
+    }
+  };
+
+  var RunOnAgent = {
+    view: function (ctrl, args, children) {
+      var job       = args.job;
+      window.job    = job;
+      var radioName = 'radio-' + job.uuid() + '-runInstanceCount';
+      var errors    = job.validate(), runInstanceCounteError;
+
+      if (errors.errors('runInstanceCount')) {
+        runInstanceCounteError = (<small class='error'>{errors.errorsForDisplay('runInstanceCount')}</small>)
+      }
+
+      return (
+        <div>
+          <f.row>
+            <f.column size={12}>
+              <label>
+                Number of jobs
+                <f.tooltip tooltip={{
+                          content: tt.job.runInstanceCount.main,
+                          size: 'small',
+                          direction: 'bottom'
+                        }}
+                           model={job}
+                           attrName='runInstanceCount'/>
+              </label>
+            </f.column>
+          </f.row>
+
+          <f.row>
+            <f.column size={12}>
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-one'}
+                     checked={job.isRunOnOneAgent()}
+                     onchange={job.runInstanceCount.bind(job, null)}/>
+              <label for={radioName + '-one'}>Run on one agent</label>
+
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-all'}
+                     checked={job.isRunOnAllAgents()}
+                     onchange={job.runInstanceCount.bind(job, 'all')}/>
+              <label for={radioName + '-all'}>Run on all agents</label>
+              <input type='radio'
+                     name={radioName}
+                     id={radioName + '-custom'}
+                     checked={!(job.isRunOnOneAgent() || !job.isRunOnAllAgents())}
+                     onchange={job.runInstanceCount.bind(job, '')}/>
+              <label for={radioName + '-custom'}>
+                Run
+                <span style={{display: 'inline-table'}}>
+                  {m.trust('&nbsp;')}
+                  <input type='number'
+                         min="1"
+                         style={{display: 'inline', width: '60px'}} size={3}
+                         value={!(job.isRunOnOneAgent() || job.isRunOnAllAgents()) ? job.runInstanceCount() : null}
+                         class={runInstanceCounteError ? 'error' : ''}
+                         oninput={m.withAttr('value', job.runInstanceCount)}/>
+                  {m.trust('&nbsp;')}
+                  instances of job
+                  {runInstanceCounteError}
+                </span>
+
+              </label>
+            </f.column>
+          </f.row>
         </div>
       );
     }
@@ -94,76 +195,95 @@ define(['mithril', 'lodash', '../helpers/form_helper', '../helpers/tooltips', '.
 
   var JobsConfigWidget = {
     controller: function (args) {
-      this.jobs             = args.jobs;
-      this.selectedJobIndex = args.selectedJobIndex;
-
-      this.appendJob = function () {
-        var newJob = this.jobs.createJob();
-        this.selectedJobIndex(this.jobs.indexOfJob(newJob));
-      };
-
-      this.removeJob = function (job) {
-        var previousJob = this.jobs.previousJob(job);
-        this.jobs.removeJob(job);
-
-        var firstJob = this.jobs.firstJob() || this.jobs.createJob();
-        this.selectedJobIndex(this.jobs.indexOfJob(previousJob || firstJob));
-      };
-
-      this.selectedJobIndex(this.jobs.indexOfJob(this.jobs.firstJob() || this.jobs.createJob()));
+      this.args = args;
+      ComponentMixins.HasViewModel.call(this);
+      ComponentMixins.ManagesCollection.call(this, {as: 'Job'});
     },
 
     view: function (ctrl) {
+      var allJobNames = ctrl.map(function (job) {
+        return job.name();
+      });
+
+      var allJobUUIDs = ctrl.map(function (job) {
+        return job.uuid();
+      });
+
+      var tabTitles = _(allJobNames).concat((
+        <f.link onclick={ctrl.add.bind(ctrl)} class='add-job'>Add Job</f.link>)
+      ).value();
+
+      var tabUUIDs = _(allJobUUIDs).concat('add-job');
+
       return (
         <div>
           <f.tabs class="job-definitions"
-                  tabTitles={ctrl.jobs.collectJobProperty('name')}
-                  tabKeys={ctrl.jobs.collectJobProperty('uuid')}
+                  tabTitles={tabTitles}
+                  tabKeys={tabUUIDs}
                   isVertical={true}
-                  selectedIndex={ctrl.selectedJobIndex}>
-            {ctrl.jobs.mapJobs(function (job) {
+                  selectedIndex={ctrl.vmState('selectedJobIndex', m.prop(0))}>
+            {ctrl.map(function (job) {
               return (
                 <f.row class='job-definition' key={job.uuid()}>
                   <f.column size={9}>
-                    <f.removeButton onclick={ctrl.removeJob.bind(ctrl, job)} class='remove-job'/>
+                    <f.removeButton onclick={ctrl.remove.bind(ctrl, job)} class='remove-job'/>
                     <f.row>
-                      <f.inputWithLabel
-                        attrName='name'
-                        model={job}/>
+                      <f.column size={12}>
+                        <f.row>
+                          <f.inputWithLabel
+                            attrName='name'
+                            model={job}
+                            size={4}/>
+                          <f.column size={8}>
+                            <JobTimeout job={job}/>
+                          </f.column>
+                        </f.row>
+                        <f.row>
+                          <f.inputWithLabel
+                            config={autoComplete(Resources.list, job, 'resources')}
+                            attrName='resources'
+                            model={job}
+                            tooltip={{
+                              content: tt.job.resources,
+                              direction: 'bottom',
+                              size: 'small'
+                            }}
+                            size={4}
+                            end={true}/>
 
-                      <f.inputWithLabel
-                        attrName='resources'
-                        model={job}
-                        tooltip={{
-                          content: tt.job.resources,
-                          direction: 'bottom',
-                          size: 'small'
-                        }}/>
+                          <f.column size={8}>
+                            <RunOnAgent job={job}/>
+                          </f.column>
 
-                      <f.column size={6} end={true}>
-                        <JobTimeout job={job}/>
+                        </f.row>
                       </f.column>
                     </f.row>
 
                     <f.row>
                       <f.column size={12} end={true}>
-                        <EnvironmentVariablesConfigWidget variables={job.environmentVariables()}/>
+                        <EnvironmentVariablesConfigWidget variables={job.environmentVariables}
+                                                          key={job.environmentVariables().uuid()}
+                                                          vm={ctrl.vmState('environmentVariables')}/>
                       </f.column>
                     </f.row>
 
                     <f.row>
                       <f.column size={12} end={true}>
-                        <TasksConfigWidget tasks={job.tasks()}/>
+                        <TasksConfigWidget tasks={job.tasks}/>
                       </f.column>
                     </f.row>
 
                     <f.row>
                       <f.column size={12}>
                         <f.tabs tabTitles={['Artifacts', 'Tabs', 'Properties']}
-                                tabKeys={['artifacts', 'tabs', 'properties']}>
-                          <ArtifactsConfigWidget artifacts={job.artifacts()}/>
-                          <TabsConfigWidget tabs={job.tabs()}/>
-                          <PropertiesConfigWidget properties={job.properties()}/>
+                                tabKeys={['artifacts', 'tabs', 'properties']}
+                                selectedIndex={ctrl.vmState('tabSelectedIndex', m.prop(0))}>
+                          <ArtifactsConfigWidget artifacts={job.artifacts}
+                                                 keys={job.artifacts().uuid()}/>
+                          <TabsConfigWidget tabs={job.tabs}
+                                            keys={job.tabs().uuid()}/>
+                          <PropertiesConfigWidget properties={job.properties}
+                                                  keys={job.properties().uuid()}/>
                         </f.tabs>
                       </f.column>
                     </f.row>
@@ -173,15 +293,6 @@ define(['mithril', 'lodash', '../helpers/form_helper', '../helpers/tooltips', '.
               );
             })}
           </f.tabs>
-          <f.row>
-            <f.column size={2} end={true}>
-              <div class='add-job'>
-                <a href="javascript:void(0)"
-                   onclick={ctrl.appendJob.bind(ctrl)}
-                   class='add-job'>Add Job</a>
-              </div>
-            </f.column>
-          </f.row>
         </div>
       );
     }

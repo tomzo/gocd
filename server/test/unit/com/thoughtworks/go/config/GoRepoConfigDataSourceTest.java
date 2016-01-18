@@ -20,7 +20,6 @@ import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.remote.*;
 import com.thoughtworks.go.domain.config.Configuration;
 import com.thoughtworks.go.helper.PartialConfigMother;
-import com.thoughtworks.go.server.materials.ScmMaterialCheckoutService;
 import org.hamcrest.core.Is;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,18 +27,17 @@ import org.junit.Test;
 
 import java.io.File;
 
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertNull;
-import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 public class GoRepoConfigDataSourceTest {
     private GoConfigPluginService configPluginService;
     private GoConfigWatchList configWatchList;
-    private ScmMaterialCheckoutService checkoutService;
     private PartialConfigProvider plugin;
 
     private GoRepoConfigDataSource repoConfigDataSource;
@@ -60,9 +58,8 @@ public class GoRepoConfigDataSourceTest {
         when(fileMock.currentConfig()).thenReturn(cruiseConfig);
 
         configWatchList = new GoConfigWatchList(fileMock);
-        checkoutService = mock(ScmMaterialCheckoutService.class);
 
-        repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,configPluginService,checkoutService);
+        repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,configPluginService);
     }
 
 
