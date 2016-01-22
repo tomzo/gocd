@@ -155,6 +155,7 @@ public class PluginServiceTest {
     @Test
     public void shouldTalkToPluginForPluginSettingsValidation_ConfigRepo() {
         when(configRepoExtension.isConfigRepoPlugin("plugin-id-4")).thenReturn(true);
+        when(configRepoExtension.canHandlePlugin("plugin-id-4")).thenReturn(true);
         when(configRepoExtension.validatePluginSettings(eq("plugin-id-4"), any(PluginSettingsConfiguration.class))).thenReturn(new ValidationResult());
 
         PluginSettings pluginSettings = new PluginSettings("plugin-id-4");
