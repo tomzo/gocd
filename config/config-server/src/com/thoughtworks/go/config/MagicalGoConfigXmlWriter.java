@@ -88,7 +88,10 @@ public class MagicalGoConfigXmlWriter {
             if(!configForEdit.getOrigin().isLocal()) {
                 if (!skipPreprocessingAndValidation) {
                     // lets validate merged config first, it will show more sensible errors
-                    loader.preprocessAndValidate(configForEdit);
+                    List<ConfigErrors> errorsAtMergedScope = configForEdit.validateAfterPreprocess();
+                    if (!errorsAtMergedScope.isEmpty()) {
+                        throw new GoConfigInvalidException(configForEdit, errorsAtMergedScope);
+                    }
                 }
                 configForEdit = configForEdit.getLocal();
             }

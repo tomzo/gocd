@@ -603,7 +603,7 @@ public class CruiseConfigTest {
 
         config.validateAfterPreprocess();
 
-        /*verify(mockTask).validate(ValidationContext.forChain(
+        verify(mockTask).validate(ConfigSaveValidationContext.forChain(
                 config,
                 config.getGroups(),
                 config.getGroups().findGroup("defaultGroup"),
@@ -613,7 +613,7 @@ public class CruiseConfigTest {
                 jobConfig,
                 jobConfig.getTasks(),
                 execTask,
-                execTask.onCancelConfig()));*/
+                execTask.onCancelConfig()));
     }
 
     @Test

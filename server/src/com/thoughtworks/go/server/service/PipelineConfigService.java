@@ -26,6 +26,7 @@ import com.thoughtworks.go.config.CruiseConfig;
 import com.thoughtworks.go.config.PipelineConfig;
 import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.config.*;
+import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.i18n.LocalizedMessage;
 import com.thoughtworks.go.listener.PipelineConfigChangedListener;
 import com.thoughtworks.go.server.cache.GoCache;
