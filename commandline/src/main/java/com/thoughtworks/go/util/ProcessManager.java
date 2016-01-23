@@ -53,6 +53,7 @@ public class ProcessManager {
         if (workingDir != null) {
             LOG.debug("[Command Line] Using working directory {} to start the process.", workingDir.getAbsolutePath());
             processBuilder.directory(workingDir);
+            envMap.put("PWD", workingDir.getAbsolutePath());
         }
 
         processBuilder.environment().putAll(environmentVariableContext.getProperties());
