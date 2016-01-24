@@ -20,6 +20,9 @@ require 'erb_renderer'
 
 class Spring
 
+  Rails.logger.fatal("*** Class spring loaded from - ")
+  Rails.logger.fatal(caller.join("\n"))
+
   MUTEX = Mutex.new
 
   def self.bean(bean_name)

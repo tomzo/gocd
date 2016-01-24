@@ -506,10 +506,6 @@ public class PipelineConfig extends BaseCollection<StageConfig> implements Param
         return timer;
     }
 
-    public void setTimer(TimerConfig timer) {
-        this.timer = timer;
-    }
-
     public boolean requiresApproval() {
         if (isEmpty()) {
             return false;
@@ -941,6 +937,10 @@ public class PipelineConfig extends BaseCollection<StageConfig> implements Param
             this.lockExplicitly();
         else
             this.unlockExplicitly();
+    }
+
+    public void setTimer(TimerConfig timer) {
+        this.timer = timer;
     }
 
     public boolean isLocal() {
