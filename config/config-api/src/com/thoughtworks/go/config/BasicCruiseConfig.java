@@ -382,11 +382,7 @@ public class BasicCruiseConfig implements CruiseConfig {
 
         @Override
         public void addPipeline(String groupName, PipelineConfig pipelineConfig) {
-            // validate at global level
-            this.verifyUniqueNameInParts(pipelineConfig);
-            this.main.addPipeline(groupName,pipelineConfig);
-            //TODO add rather than reconstruct
-            groups = this.mergePipelineConfigs();
+            groups.addPipeline(groupName, pipelineConfig);
         }
 
         @Override
