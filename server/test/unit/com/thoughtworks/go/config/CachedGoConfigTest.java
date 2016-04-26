@@ -24,13 +24,19 @@ import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.domain.PipelineGroups;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
-import com.thoughtworks.go.helper.*;
+import com.thoughtworks.go.helper.ConfigFileFixture;
+import com.thoughtworks.go.helper.GoConfigMother;
+import com.thoughtworks.go.helper.MaterialConfigsMother;
+import com.thoughtworks.go.helper.PipelineConfigMother;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
 import com.thoughtworks.go.server.service.GoConfigService;
 import com.thoughtworks.go.server.service.PipelineConfigService;
 import com.thoughtworks.go.server.util.ServerVersion;
-import com.thoughtworks.go.serverhealth.*;
+import com.thoughtworks.go.serverhealth.HealthStateScope;
+import com.thoughtworks.go.serverhealth.HealthStateType;
+import com.thoughtworks.go.serverhealth.ServerHealthService;
+import com.thoughtworks.go.serverhealth.ServerHealthState;
 import com.thoughtworks.go.service.ConfigRepository;
 import com.thoughtworks.go.util.*;
 import org.hamcrest.Matchers;
@@ -48,23 +54,16 @@ import static com.thoughtworks.go.helper.ConfigFileFixture.CONFIG_WITH_1CONFIGRE
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.StringContains.containsString;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
-public class MergedGoConfigTest {
-
-    private CachedFileGoConfig cachedFileGoConfig;
-
+public class CachedGoConfigTest {
     private GoConfigPluginService configPluginService;
     private GoConfigWatchList configWatchList;
     private PartialConfigProvider plugin;
-
     private GoRepoConfigDataSource repoConfigDataSource;
-
     private GoPartialConfig partials;
-
     private File folder = new File("workdir");
 
     @Before
@@ -77,28 +76,27 @@ public class MergedGoConfigTest {
                 new ConfigCache(), new ServerVersion(), ConfigElementImplementationRegistryMother.withNoPlugins(),
                 serverHealthService, mock(CachedGoPartials.class));
         serverHealthService = new ServerHealthService();
-        cachedFileGoConfig = new CachedFileGoConfig(dataSource);
-        mergedGoConfig.loadConfigIfNull();
+        cachedGoConfig.loadConfigIfNull();
 
         configPluginService = mock(GoConfigPluginService.class);
         plugin = mock(PartialConfigProvider.class);
         when(configPluginService.partialConfigProviderFor(any(ConfigRepoConfig.class))).thenReturn(plugin);
 
-        configWatchList = new GoConfigWatchList(cachedFileGoConfig);
+        configWatchList = new GoConfigWatchList(cachedGoConfig);
 
         repoConfigDataSource = new GoRepoConfigDataSource(configWatchList, configPluginService);
 
         partials = new GoPartialConfig(repoConfigDataSource, configWatchList, mock(GoConfigService.class), mock(CachedGoPartials.class), mock(ServerHealthService.class));
 
-        mergedGoConfig = new MergedGoConfig(serverHealthService, cachedFileGoConfig);
+        cachedGoConfig = new CachedGoConfig(serverHealthService, dataSource);
 
-        configHelper.usingCruiseConfigDao(new GoConfigDao(mergedGoConfig));
+        configHelper.usingCruiseConfigDao(new GoConfigDao(cachedGoConfig));
     }
 
     @Test
     public void shouldNotifyListenersWhenFileChanged() {
         ConfigChangedListener listener = mock(ConfigChangedListener.class);
-        mergedGoConfig.registerListener(listener);
+        cachedGoConfig.registerListener(listener);
         verify(listener, times(1)).onConfigChange(any(CruiseConfig.class));
 
         String content = "<cruise schemaVersion='" + GoConstants.CONFIG_SCHEMA_VERSION + "'>\n"
@@ -121,9 +119,9 @@ public class MergedGoConfigTest {
         when(plugin.load(any(File.class), any(PartialConfigLoadContext.class))).thenReturn(
                 part1
         );
-        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(),folder,"321e");
-        assertThat(repoConfigDataSource.latestPartialConfigForMaterial(configRepo.getMaterialConfig()),is(part1));
-        assertThat(mergedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")),is(true));
+        repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
+        assertThat(repoConfigDataSource.latestPartialConfigForMaterial(configRepo.getMaterialConfig()), is(part1));
+        assertThat(cachedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
     }
 
     @Test
@@ -134,14 +132,14 @@ public class MergedGoConfigTest {
         when(plugin.load(any(File.class), any(PartialConfigLoadContext.class))).thenReturn(part1);
 
         ConfigChangedListener listener = mock(ConfigChangedListener.class);
-        mergedGoConfig.registerListener(listener);
+        cachedGoConfig.registerListener(listener);
         // at registration
         verify(listener, times(1)).onConfigChange(any(CruiseConfig.class));
 
         repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
 
         assertThat("currentConfigShouldBeMerged",
-                mergedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")),is(true));
+                cachedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
         verify(listener, times(2)).onConfigChange(any(CruiseConfig.class));
     }
 
@@ -154,14 +152,14 @@ public class MergedGoConfigTest {
         when(plugin.load(any(File.class), any(PartialConfigLoadContext.class))).thenReturn(badPart);
 
         ConfigChangedListener listener = mock(ConfigChangedListener.class);
-        mergedGoConfig.registerListener(listener);
+        cachedGoConfig.registerListener(listener);
         // at registration
         verify(listener, times(1)).onConfigChange(any(CruiseConfig.class));
 
         repoConfigDataSource.onCheckoutComplete(configRepo.getMaterialConfig(), folder, "321e");
 
         assertThat("currentConfigShouldBeMainXmlOnly",
-                mergedGoConfig.currentConfig(),is(mergedGoConfig.currentConfig()));
+                cachedGoConfig.currentConfig(), is(cachedGoConfig.currentConfig()));
 
         verify(listener, times(1)).onConfigChange(any(CruiseConfig.class));
     }
@@ -203,105 +201,53 @@ public class MergedGoConfigTest {
         assertThat(serverHealthService.filterByScope(HealthStateScope.GLOBAL).isEmpty(), is(true));
     }
 
-
-//    @Test
-//    public void tryAssembleMergedConfig_shouldSetXmlConfigWhenNoPartials() {
-//        GoConfigHolder fileHolder = mergedGoConfig.loadConfigHolder();
-//        MergedGoConfig mergedGoConfig = (MergedGoConfig) this.mergedGoConfig;
-//        mergedGoConfig.tryAssembleMergedConfig(fileHolder, new ArrayList<PartialConfig>());
-//        assertSame(mergedGoConfig.loadConfigHolder(), mergedGoConfig.loadConfigHolder());
-//        assertSame(mergedGoConfig.currentConfig(), mergedGoConfig.currentConfig());
-//        assertSame(mergedGoConfig.loadForEditing(), mergedGoConfig.loadForEditing());
-//    }
-
-//    @Test
-//    public void tryAssembleMergedConfig_shouldSetNewConfigWithMergedConfigWhenThereArePartials() {
-//        GoConfigHolder fileHolder = mergedGoConfig.loadConfigHolder();
-//        MergedGoConfig mergedGoConfig = (MergedGoConfig) this.mergedGoConfig;
-//        PartialConfig part1 = new PartialConfig(new PipelineGroups(
-//                PipelineConfigMother.createGroup("part1", PipelineConfigMother.pipelineConfig("pipe1"))));
-//        mergedGoConfig.tryAssembleMergedConfig(fileHolder, Arrays.asList(part1));
-//
-//        assertThat("configHolderHasRemotePartsOfConfigInConfig",
-//                mergedGoConfig.loadConfigHolder().config.hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
-//        assertThat("configHolderHasRemotePartsOfConfigInConfigForEdit",
-//                mergedGoConfig.loadConfigHolder().configForEdit.hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
-//        assertThat("currentConfigHasRemotePartsOfConfig",
-//                mergedGoConfig.currentConfig().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
-//        assertThat("currentConfigForEditHasRemotePartsOfConfig",
-//                mergedGoConfig.loadForEditing().hasPipelineNamed(new CaseInsensitiveString("pipe1")), is(true));
-//        // yes, we really want to return un-editable pipeline in config for edit
-//
-//        assertThat("configHolderHasLocalPartsOfConfigInConfig",
-//                mergedGoConfig.loadConfigHolder().config.getConfigRepos().size(), is(1));
-//        assertThat("configHolderHasLocalPartsOfConfigInConfigForEdit",
-//                mergedGoConfig.loadConfigHolder().configForEdit.getConfigRepos().size(), is(1));
-//        assertThat("currentConfigHasLocalPartsOfConfig",
-//                mergedGoConfig.currentConfig().getConfigRepos().size(), is(1));
-//        assertThat("currentConfigForEditHasLocalPartsOfConfig",
-//                mergedGoConfig.loadForEditing().getConfigRepos().size(), is(1));
-//    }
-
-//    @Test
-//    public void tryAssembleMergedConfig_shouldNotChangeConfigWhenMergeFailed() {
-//        GoConfigHolder fileHolder = mergedGoConfig.loadConfigHolder();
-//        MergedGoConfig mergedGoConfig = (MergedGoConfig) this.mergedGoConfig;
-//        PartialConfig badPart = new PartialConfig(new PipelineGroups(
-//                PipelineConfigMother.createGroup("part1",
-//                        PipelineConfigMother.pipelineConfig("pipe1"), PipelineConfigMother.pipelineConfig("pipe1"))));
-//        mergedGoConfig.tryAssembleMergedConfig(fileHolder, Arrays.asList(badPart));
-//        assertSame(mergedGoConfig.loadConfigHolder(), mergedGoConfig.loadConfigHolder());
-//        assertSame(mergedGoConfig.currentConfig(), mergedGoConfig.currentConfig());
-//        assertSame(mergedGoConfig.loadForEditing(), mergedGoConfig.loadForEditing());
-//    }
-
     @Test
     public void shouldDelegateWritePipelineConfigCallToFileService() {
-        CachedFileGoConfig fileService = mock(CachedFileGoConfig.class);
         PipelineConfigService.SaveCommand saveCommand = mock(PipelineConfigService.SaveCommand.class);
-        MergedGoConfig mergedGoConfig = new MergedGoConfig(mock(ServerHealthService.class), fileService);
+        GoFileConfigDataSource dataSource = mock(GoFileConfigDataSource.class);
+        CachedGoConfig cachedGoConfig = new CachedGoConfig(mock(ServerHealthService.class), dataSource);
         PipelineConfig pipelineConfig = new PipelineConfig();
-        CachedFileGoConfig.PipelineConfigSaveResult saveResult = mock(CachedFileGoConfig.PipelineConfigSaveResult.class);
+        CachedGoConfig.PipelineConfigSaveResult saveResult = mock(CachedGoConfig.PipelineConfigSaveResult.class);
         GoConfigHolder savedConfig = new GoConfigHolder(new BasicCruiseConfig(), new BasicCruiseConfig());
         when(saveResult.getConfigHolder()).thenReturn(savedConfig);
-        GoConfigHolder holderBeforeUpdate = mergedGoConfig.loadConfigHolder();
+        GoConfigHolder holderBeforeUpdate = cachedGoConfig.loadConfigHolder();
         Username user = new Username(new CaseInsensitiveString("user"));
-        when(fileService.writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user)).thenReturn(saveResult);
+        when(dataSource.writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user)).thenReturn(saveResult);
 
-        mergedGoConfig.writePipelineWithLock(pipelineConfig, saveCommand, user);
-        assertThat(mergedGoConfig.loadConfigHolder(), is(savedConfig));
-        assertThat(mergedGoConfig.currentConfig(), is(savedConfig.config));
-        assertThat(mergedGoConfig.loadForEditing(), is(savedConfig.configForEdit));
-        verify(fileService).writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user);
+        cachedGoConfig.writePipelineWithLock(pipelineConfig, saveCommand, user);
+        assertThat(cachedGoConfig.loadConfigHolder(), is(savedConfig));
+        assertThat(cachedGoConfig.currentConfig(), is(savedConfig.config));
+        assertThat(cachedGoConfig.loadForEditing(), is(savedConfig.configForEdit));
+        verify(dataSource).writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user);
     }
 
-    protected MergedGoConfig mergedGoConfig;
+    protected CachedGoConfig cachedGoConfig;
     protected GoConfigFileHelper configHelper;
     protected GoFileConfigDataSource dataSource;
     protected ServerHealthService serverHealthService;
 
     @Test
     public void shouldUpdateCachedConfigOnSave() throws Exception {
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().size(), Matchers.is(1));
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().size(), Matchers.is(1));
         configHelper.addAgent("hostname", "uuid2");
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().size(), Matchers.is(2));
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().size(), Matchers.is(2));
     }
 
     @Test
     public void shouldReloadCachedConfigWhenWriting() throws Exception {
-        mergedGoConfig.writeWithLock(updateFirstAgentResources("osx"));
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().get(0).getResources().toString(), Matchers.is("osx"));
+        cachedGoConfig.writeWithLock(updateFirstAgentResources("osx"));
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().get(0).getResources().toString(), Matchers.is("osx"));
 
-        mergedGoConfig.writeWithLock(updateFirstAgentResources("osx, firefox"));
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().get(0).getResources().toString(), Matchers.is("firefox | osx"));
+        cachedGoConfig.writeWithLock(updateFirstAgentResources("osx, firefox"));
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().get(0).getResources().toString(), Matchers.is("firefox | osx"));
     }
 
     @Test
     public void shouldReloadCachedConfigFromDisk() throws Exception {
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().size(), Matchers.is(1));
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().size(), Matchers.is(1));
         configHelper.writeXmlToConfigFile(ConfigFileFixture.TASKS_WITH_CONDITION);
-        mergedGoConfig.forceReload();
-        Assert.assertThat(mergedGoConfig.currentConfig().agents().size(), Matchers.is(0));
+        cachedGoConfig.forceReload();
+        Assert.assertThat(cachedGoConfig.currentConfig().agents().size(), Matchers.is(0));
     }
 
     @Test
@@ -346,16 +292,16 @@ public class MergedGoConfigTest {
 
         configHelper.writeXmlToConfigFile(content);
 
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        CruiseConfig cruiseConfig = mergedGoConfig.currentConfig();
+        CruiseConfig cruiseConfig = cachedGoConfig.currentConfig();
         ExecTask devExec = (ExecTask) cruiseConfig.pipelineConfigByName(new CaseInsensitiveString("dev")).getFirstStageConfig().jobConfigByConfigName(new CaseInsensitiveString("job1")).getTasks().first();
         Assert.assertThat(devExec, Is.is(new ExecTask("/bin/ls", "/tmp", (String) null)));
 
         ExecTask acceptanceExec = (ExecTask) cruiseConfig.pipelineConfigByName(new CaseInsensitiveString("acceptance")).getFirstStageConfig().jobConfigByConfigName(new CaseInsensitiveString("job1")).getTasks().first();
         Assert.assertThat(acceptanceExec, Is.is(new ExecTask("/bin/twist", "./acceptance", (String) null)));
 
-        cruiseConfig = mergedGoConfig.loadForEditing();
+        cruiseConfig = cachedGoConfig.loadForEditing();
         devExec = (ExecTask) cruiseConfig.getTemplateByName(new CaseInsensitiveString("abc")).get(0).jobConfigByConfigName(new CaseInsensitiveString("job1")).getTasks().first();
         Assert.assertThat(devExec, Is.is(new ExecTask("/bin/#{command}", "#{dir}", (String) null)));
 
@@ -391,9 +337,9 @@ public class MergedGoConfigTest {
 
         configHelper.writeXmlToConfigFile(content);
 
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        CruiseConfig cruiseConfig = mergedGoConfig.currentConfig();
+        CruiseConfig cruiseConfig = cachedGoConfig.currentConfig();
         ExecTask devExec = (ExecTask) cruiseConfig.pipelineConfigByName(new CaseInsensitiveString("dev")).getFirstStageConfig().jobConfigByConfigName(new CaseInsensitiveString("job1")).getTasks().first();
         Assert.assertThat(devExec, Is.is(new ExecTask("/bin/ls#{a}#{b}", "/tmp", (String) null)));
     }
@@ -425,9 +371,9 @@ public class MergedGoConfigTest {
 
         configHelper.writeXmlToConfigFile(content);
 
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        CruiseConfig cruiseConfig = mergedGoConfig.currentConfig();
+        CruiseConfig cruiseConfig = cachedGoConfig.currentConfig();
         Assert.assertThat(cruiseConfig.pipelineConfigByName(new CaseInsensitiveString("dev")).getLabelTemplate(), Is.is("cruise-1.2-${COUNT}"));
     }
 
@@ -462,45 +408,45 @@ public class MergedGoConfigTest {
 
         configHelper.writeXmlToConfigFile(content);
 
-        GoConfigValidity configValidity = mergedGoConfig.checkConfigFileValid();
+        GoConfigValidity configValidity = cachedGoConfig.checkConfigFileValid();
         Assert.assertThat(configValidity.isValid(), Matchers.is(false));
         Assert.assertThat(configValidity.errorMessage(), containsString("Environment Variable name 'GO_WORKING_DIR' is not unique for pipeline 'dev'"));
     }
 
     @Test
     public void shouldReturnCachedConfigIfConfigFileIsInvalid() throws Exception {
-        CruiseConfig inTheBefore = mergedGoConfig.currentConfig();
+        CruiseConfig inTheBefore = cachedGoConfig.currentConfig();
         Assert.assertThat(inTheBefore.agents().size(), Matchers.is(1));
 
         configHelper.writeXmlToConfigFile("invalid-xml");
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        assertTrue(mergedGoConfig.currentConfig() == inTheBefore);
-        Assert.assertThat(mergedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
+        assertTrue(cachedGoConfig.currentConfig() == inTheBefore);
+        Assert.assertThat(cachedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
     }
 
     @Test
     public void shouldClearInvalidExceptionWhenConfigErrorsAreFixed() throws Exception {
         configHelper.writeXmlToConfigFile("invalid-xml");
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        mergedGoConfig.currentConfig();
-        Assert.assertThat(mergedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
+        cachedGoConfig.currentConfig();
+        Assert.assertThat(cachedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
 
         configHelper.onSetUp();
 
-        CruiseConfig cruiseConfig = mergedGoConfig.currentConfig();
+        CruiseConfig cruiseConfig = cachedGoConfig.currentConfig();
 
         Assert.assertThat(cruiseConfig.agents().size(), Matchers.is(1));
-        Assert.assertThat(mergedGoConfig.checkConfigFileValid().isValid(), Matchers.is(true));
+        Assert.assertThat(cachedGoConfig.checkConfigFileValid().isValid(), Matchers.is(true));
     }
 
     @Test
     public void shouldSetServerHealthMessageWhenConfigFileIsInvalid() throws IOException {
         configHelper.writeXmlToConfigFile("invalid-xml");
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        Assert.assertThat(mergedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
+        Assert.assertThat(cachedGoConfig.checkConfigFileValid().isValid(), Matchers.is(false));
 
         List<ServerHealthState> serverHealthStates = serverHealthService.getAllLogs();
         Assert.assertThat(serverHealthStates.size(), Matchers.is(1));
@@ -515,9 +461,9 @@ public class MergedGoConfigTest {
         Assert.assertThat(serverHealthService.getAllLogs().size(), Matchers.is(1));
 
         configHelper.writeXmlToConfigFile(ConfigFileFixture.TASKS_WITH_CONDITION);
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        Assert.assertThat(mergedGoConfig.checkConfigFileValid().isValid(), Matchers.is(true));
+        Assert.assertThat(cachedGoConfig.checkConfigFileValid().isValid(), Matchers.is(true));
 
         Assert.assertThat(serverHealthService.getAllLogs().size(), Matchers.is(0));
     }
@@ -525,17 +471,17 @@ public class MergedGoConfigTest {
     @Test
     public void shouldReturnDefaultCruiseConfigIfLoadingTheConfigFailsForTheFirstTime() throws Exception {
         configHelper.writeXmlToConfigFile("invalid-xml");
-        mergedGoConfig = new MergedGoConfig(new ServerHealthService(), new CachedFileGoConfig(dataSource));
-        Assert.assertThat(mergedGoConfig.currentConfig(), Matchers.<CruiseConfig>is(new BasicCruiseConfig()));
+        cachedGoConfig = new CachedGoConfig(new ServerHealthService(), dataSource);
+        Assert.assertThat(cachedGoConfig.currentConfig(), Matchers.<CruiseConfig>is(new BasicCruiseConfig()));
     }
 
     @Test
     public void shouldLoadConfigHolderIfNotAvailable() throws Exception {
         configHelper.addPipeline("foo", "bar");
-        mergedGoConfig = new MergedGoConfig(new ServerHealthService(), new CachedFileGoConfig(dataSource));
+        cachedGoConfig = new CachedGoConfig(new ServerHealthService(), dataSource);
         dataSource.reloadIfModified();
-        mergedGoConfig.forceReload();
-        GoConfigHolder loaded = mergedGoConfig.loadConfigHolder();
+        cachedGoConfig.forceReload();
+        GoConfigHolder loaded = cachedGoConfig.loadConfigHolder();
         Assert.assertThat(loaded.config.hasPipelineNamed(new CaseInsensitiveString("foo")), Matchers.is(true));
         Assert.assertThat(loaded.configForEdit.hasPipelineNamed(new CaseInsensitiveString("foo")), Matchers.is(true));
     }
@@ -545,20 +491,20 @@ public class MergedGoConfigTest {
         CruiseConfig cruiseConfig = configHelper.load();
         addPipelineWithParams(cruiseConfig);
         configHelper.writeConfigFile(cruiseConfig);
-        mergedGoConfig = new MergedGoConfig(new ServerHealthService(), new CachedFileGoConfig(dataSource));
+        cachedGoConfig = new CachedGoConfig(new ServerHealthService(), dataSource);
         dataSource.reloadIfModified();
 
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        PipelineConfig config = mergedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        PipelineConfig config = cachedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         HgMaterialConfig hgMaterialConfig = (HgMaterialConfig) byFolder(config.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://hg-server/repo-name"));
 
-        config = mergedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        config = cachedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         hgMaterialConfig = (HgMaterialConfig) byFolder(config.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://#{foo}/#{bar}"));
 
-        mergedGoConfig.loadConfigHolder();
+        cachedGoConfig.loadConfigHolder();
     }
 
     private void addPipelineWithParams(CruiseConfig cruiseConfig) {
@@ -571,28 +517,28 @@ public class MergedGoConfigTest {
 
     @Test
     public void shouldLoadConfigForReadAndEditWhenNewXMLIsWritten() throws Exception {
-        mergedGoConfig.forceReload();
-        GoConfigValidity configValidity = mergedGoConfig.checkConfigFileValid();
+        cachedGoConfig.forceReload();
+        GoConfigValidity configValidity = cachedGoConfig.checkConfigFileValid();
         Assert.assertThat(configValidity.isValid(), Matchers.is(true));
 
-        CruiseConfig cruiseConfig = mergedGoConfig.loadForEditing();
+        CruiseConfig cruiseConfig = cachedGoConfig.loadForEditing();
 
         addPipelineWithParams(cruiseConfig);
 
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         new MagicalGoConfigXmlWriter(new ConfigCache(), ConfigElementImplementationRegistryMother.withNoPlugins()).write(cruiseConfig, buffer, false);
 
-        mergedGoConfig.save(new String(buffer.toByteArray()), true);
+        cachedGoConfig.save(new String(buffer.toByteArray()), true);
 
-        PipelineConfig reloadedPipelineConfig = mergedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        PipelineConfig reloadedPipelineConfig = cachedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         HgMaterialConfig hgMaterialConfig = (HgMaterialConfig) byFolder(reloadedPipelineConfig.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://hg-server/repo-name"));
 
-        reloadedPipelineConfig = mergedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        reloadedPipelineConfig = cachedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         hgMaterialConfig = (HgMaterialConfig) byFolder(reloadedPipelineConfig.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://#{foo}/#{bar}"));
 
-        GoConfigHolder configHolder = mergedGoConfig.loadConfigHolder();
+        GoConfigHolder configHolder = cachedGoConfig.loadConfigHolder();
         reloadedPipelineConfig = configHolder.config.pipelineConfigByName(new CaseInsensitiveString("mingle"));
         hgMaterialConfig = (HgMaterialConfig) byFolder(reloadedPipelineConfig.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://hg-server/repo-name"));
@@ -604,21 +550,21 @@ public class MergedGoConfigTest {
 
     @Test
     public void shouldLoadConfigForReadAndEditWhenConfigIsUpdatedThoughACommand() throws Exception {
-        mergedGoConfig.forceReload();
-        GoConfigValidity configValidity = mergedGoConfig.checkConfigFileValid();
+        cachedGoConfig.forceReload();
+        GoConfigValidity configValidity = cachedGoConfig.checkConfigFileValid();
         Assert.assertThat(configValidity.isValid(), Matchers.is(true));
 
-        mergedGoConfig.writeWithLock(new UpdateConfigCommand() {
+        cachedGoConfig.writeWithLock(new UpdateConfigCommand() {
             public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
                 addPipelineWithParams(cruiseConfig);
                 return cruiseConfig;
             }
         });
-        PipelineConfig reloadedPipelineConfig = mergedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        PipelineConfig reloadedPipelineConfig = cachedGoConfig.currentConfig().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         HgMaterialConfig hgMaterialConfig = (HgMaterialConfig) byFolder(reloadedPipelineConfig.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://hg-server/repo-name"));
 
-        reloadedPipelineConfig = mergedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
+        reloadedPipelineConfig = cachedGoConfig.loadForEditing().pipelineConfigByName(new CaseInsensitiveString("mingle"));
         hgMaterialConfig = (HgMaterialConfig) byFolder(reloadedPipelineConfig.materialConfigs(), "folder");
         Assert.assertThat(hgMaterialConfig.getUrl(), Matchers.is("http://#{foo}/#{bar}"));
     }
@@ -626,10 +572,10 @@ public class MergedGoConfigTest {
     @Test
     public void shouldNotifyConfigListenersWhenConfigChanges() throws Exception {
         final ConfigChangedListener listener = mock(ConfigChangedListener.class);
-        mergedGoConfig.forceReload();
+        cachedGoConfig.forceReload();
 
-        mergedGoConfig.registerListener(listener);
-        mergedGoConfig.writeWithLock(updateFirstAgentResources("osx"));
+        cachedGoConfig.registerListener(listener);
+        cachedGoConfig.writeWithLock(updateFirstAgentResources("osx"));
 
         verify(listener, times(2)).onConfigChange(any(BasicCruiseConfig.class));
     }
@@ -638,9 +584,9 @@ public class MergedGoConfigTest {
     public void shouldNotNotifyWhenConfigIsNullDuringRegistration() throws Exception {
         configHelper.deleteConfigFile();
         ServerHealthService serverHealthService = new ServerHealthService();
-        mergedGoConfig = new MergedGoConfig(serverHealthService, new CachedFileGoConfig(dataSource));
+        cachedGoConfig = new CachedGoConfig(serverHealthService, dataSource);
         final ConfigChangedListener listener = mock(ConfigChangedListener.class);
-        mergedGoConfig.registerListener(listener);
+        cachedGoConfig.registerListener(listener);
         verifyNoMoreInteractions(listener);
     }
 
@@ -651,9 +597,9 @@ public class MergedGoConfigTest {
         CruiseConfig currentConfig = GoConfigMother.configWithPipelines("p1");
         GoFileConfigDataSource.GoConfigSaveResult goConfigSaveResult = new GoFileConfigDataSource.GoConfigSaveResult(new GoConfigHolder(currentConfig, currentConfig), ConfigSaveState.MERGED);
         when(goFileConfigDataSource.writeWithLock(argThat(Matchers.is(updateConfigCommand)), any(GoConfigHolder.class))).thenReturn(goConfigSaveResult);
-        mergedGoConfig = new MergedGoConfig(serverHealthService, new CachedFileGoConfig(dataSource));
+        cachedGoConfig = new CachedGoConfig(serverHealthService, dataSource);
 
-        ConfigSaveState configSaveState = mergedGoConfig.writeWithLock(updateConfigCommand);
+        ConfigSaveState configSaveState = cachedGoConfig.writeWithLock(updateConfigCommand);
         Assert.assertThat(configSaveState, Matchers.is(ConfigSaveState.MERGED));
     }
 
@@ -664,9 +610,9 @@ public class MergedGoConfigTest {
         CruiseConfig currentConfig = GoConfigMother.configWithPipelines("p1");
         GoFileConfigDataSource.GoConfigSaveResult goConfigSaveResult = new GoFileConfigDataSource.GoConfigSaveResult(new GoConfigHolder(currentConfig, currentConfig), ConfigSaveState.UPDATED);
         when(goFileConfigDataSource.writeWithLock(argThat(Matchers.is(updateConfigCommand)), any(GoConfigHolder.class))).thenReturn(goConfigSaveResult);
-        mergedGoConfig = new MergedGoConfig(serverHealthService, new CachedFileGoConfig(dataSource));
+        cachedGoConfig = new CachedGoConfig(serverHealthService, dataSource);
 
-        ConfigSaveState configSaveState = mergedGoConfig.writeWithLock(updateConfigCommand);
+        ConfigSaveState configSaveState = cachedGoConfig.writeWithLock(updateConfigCommand);
         Assert.assertThat(configSaveState, Matchers.is(ConfigSaveState.UPDATED));
     }
 

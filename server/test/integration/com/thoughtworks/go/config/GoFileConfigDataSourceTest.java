@@ -105,10 +105,9 @@ public class GoFileConfigDataSourceTest {
                 configRepository, systemEnvironment, timeProvider, configCache, serverVersion, registry, mock(ServerHealthService.class), cachedGoPartials);
         dataSource.upgradeIfNecessary();
         ServerHealthService serverHealthService = new ServerHealthService();
-        CachedFileGoConfig fileService = new CachedFileGoConfig(dataSource);
-        MergedGoConfig mergedGoConfig = new MergedGoConfig(serverHealthService, fileService);
-        mergedGoConfig.loadConfigIfNull();
-        goConfigDao = new GoConfigDao(mergedGoConfig);
+        CachedGoConfig cachedGoConfig = new CachedGoConfig(serverHealthService, dataSource);
+        cachedGoConfig.loadConfigIfNull();
+        goConfigDao = new GoConfigDao(cachedGoConfig);
         configHelper.load();
         configHelper.usingCruiseConfigDao(goConfigDao);
         ConfigRepoPartialPreprocessor preprocessor = (ConfigRepoPartialPreprocessor) ListUtil.find(MagicalGoConfigXmlLoader.PREPROCESSORS, new ListUtil.Condition() {
@@ -117,7 +116,7 @@ public class GoFileConfigDataSourceTest {
                 return item instanceof ConfigRepoPartialPreprocessor;
             }
         });
-        GoConfigWatchList configWatchList = new GoConfigWatchList(mergedGoConfig);
+        GoConfigWatchList configWatchList = new GoConfigWatchList(cachedGoConfig);
         ConfigElementImplementationRegistry configElementImplementationRegistry = new ConfigElementImplementationRegistry(new NoPluginsInstalled());
         preprocessor.init(new GoPartialConfig(new GoRepoConfigDataSource(configWatchList, new GoConfigPluginService(new ConfigCache(), configElementImplementationRegistry)), configWatchList, new GoConfigService(goConfigDao, null, new GoConfigMigration(configRepository, new TimeProvider(), configCache, configElementImplementationRegistry), new StubGoCache(new TestTransactionSynchronizationManager()), configRepository, configCache, configElementImplementationRegistry, new InstanceFactory(), cachedGoPartials), cachedGoPartials, serverHealthService));
     }

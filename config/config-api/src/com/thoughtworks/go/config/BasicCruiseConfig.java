@@ -20,6 +20,7 @@ import com.rits.cloning.Cloner;
 import com.thoughtworks.go.config.materials.MaterialConfigs;
 import com.thoughtworks.go.config.materials.ScmMaterialConfig;
 import com.thoughtworks.go.config.materials.dependency.DependencyMaterialConfig;
+import com.thoughtworks.go.config.merge.MergeConfigOrigin;
 import com.thoughtworks.go.config.merge.MergeEnvironmentConfig;
 import com.thoughtworks.go.config.merge.MergePipelineConfigs;
 import com.thoughtworks.go.config.preprocessor.SkipParameterResolution;
@@ -57,6 +58,7 @@ public class BasicCruiseConfig implements CruiseConfig {
     @ConfigSubtag @SkipParameterResolution private EnvironmentsConfig environments = new EnvironmentsConfig();
     @ConfigSubtag @SkipParameterResolution private Agents agents = new Agents();
 
+    @IgnoreTraversal
     private CruiseStrategy strategy;
 
     //This is set reflective by the MagicalGoConfigXmlLoader
@@ -135,8 +137,6 @@ public class BasicCruiseConfig implements CruiseConfig {
 
         void setOrigins(ConfigOrigin origins);
 
-        String getMd5();
-
         CruiseConfig getLocal();
 
         void addPipeline(String groupName, PipelineConfig pipelineConfig);
@@ -196,11 +196,6 @@ public class BasicCruiseConfig implements CruiseConfig {
             {
                 pipes.setOrigins(origins);
             }
-        }
-
-        @Override
-        public String getMd5() {
-            return md5;
         }
 
         @Override
@@ -365,8 +360,8 @@ public class BasicCruiseConfig implements CruiseConfig {
 
         @Override
         public ConfigOrigin getOrigin() {
-            return new FileConfigOrigin();
-            //TODO: jyoti, For now, fix this
+            return new MergeConfigOrigin();
+            //TODO: jyoti, check if we still need this
 //            MergeConfigOrigin origins = new MergeConfigOrigin(this.main.getOrigin());
 //            for(PartialConfig part : this.parts)
 //            {
@@ -378,11 +373,6 @@ public class BasicCruiseConfig implements CruiseConfig {
         @Override
         public void setOrigins(ConfigOrigin origins) {
             throw bomb("Cannot set origins on merged config");
-        }
-
-        @Override
-        public String getMd5() {
-            return md5;
         }
 
         @Override
@@ -1161,7 +1151,7 @@ public class BasicCruiseConfig implements CruiseConfig {
 
     @Override
     public String getMd5() {
-        return this.strategy.getMd5();
+        return md5;
     }
 
     @Override
