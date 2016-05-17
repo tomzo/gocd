@@ -31,6 +31,7 @@ import com.thoughtworks.go.config.remote.RepoConfigOrigin;
 import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.domain.GoConfigRevision;
 import com.thoughtworks.go.helper.*;
+import com.thoughtworks.go.plugin.access.configrepo.ConfigRepoExtension;
 import com.thoughtworks.go.server.service.GoConfigService;
 import com.thoughtworks.go.server.service.InstanceFactory;
 import com.thoughtworks.go.server.service.StubGoCache;
@@ -121,7 +122,10 @@ public class GoFileConfigDataSourceTest {
         });
         GoConfigWatchList configWatchList = new GoConfigWatchList(cachedGoConfig);
         ConfigElementImplementationRegistry configElementImplementationRegistry = new ConfigElementImplementationRegistry(new NoPluginsInstalled());
-        preprocessor.init(new GoPartialConfig(new GoRepoConfigDataSource(configWatchList, new GoConfigPluginService(new ConfigCache(), configElementImplementationRegistry)), configWatchList, new GoConfigService(goConfigDao, null, new GoConfigMigration(configRepository, new TimeProvider(), configCache, configElementImplementationRegistry), new StubGoCache(new TestTransactionSynchronizationManager()), configRepository, configCache, configElementImplementationRegistry, new InstanceFactory(), cachedGoPartials), cachedGoPartials, serverHealthService));
+        ConfigRepoExtension extension = mock(ConfigRepoExtension.class);
+        GoConfigPluginService configPluginService = new GoConfigPluginService(extension, new ConfigCache(), configElementImplementationRegistry, cachedGoConfig);
+        preprocessor.init(new GoPartialConfig(new GoRepoConfigDataSource(configWatchList,configPluginService,serverHealthService),
+                configWatchList, new GoConfigService(goConfigDao, null, new GoConfigMigration(configRepository, new TimeProvider(), configCache, configElementImplementationRegistry), new StubGoCache(new TestTransactionSynchronizationManager()), configRepository, configCache, configElementImplementationRegistry, new InstanceFactory(), cachedGoPartials), cachedGoPartials, serverHealthService));
         repoConfig = new ConfigRepoConfig(new GitMaterialConfig("url"), "plugin");
         configHelper.addConfigRepo(repoConfig);
     }

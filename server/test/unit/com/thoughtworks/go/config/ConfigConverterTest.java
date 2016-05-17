@@ -50,7 +50,7 @@ public class ConfigConverterTest {
     private ConfigConverter configConverter;
     private GoCipher goCipher;
     private List<String> filter = new ArrayList<>();
-    private CachedFileGoConfig cachedFileGoConfig;
+    private CachedGoConfig cachedFileGoConfig;
 
     Collection<CREnvironmentVariable> environmentVariables = new ArrayList<>();
     Collection<CRTab> tabs = new ArrayList<>();
@@ -83,7 +83,7 @@ public class ConfigConverterTest {
         stages = new ArrayList<>();
         materials = new ArrayList<>();
 
-        cachedFileGoConfig = mock(CachedFileGoConfig.class);
+        cachedFileGoConfig = mock(CachedGoConfig.class);
         goCipher = mock(GoCipher.class);
         configConverter = new ConfigConverter(goCipher,cachedFileGoConfig);
         String encryptedText = "secret";

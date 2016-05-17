@@ -35,9 +35,9 @@ import java.util.*;
 public class ConfigConverter {
 
     private final GoCipher cipher;
-    private final CachedFileGoConfig cachedFileGoConfig;
+    private final CachedGoConfig cachedFileGoConfig;
 
-    public ConfigConverter(GoCipher goCipher,CachedFileGoConfig cachedFileGoConfig)
+    public ConfigConverter(GoCipher goCipher,CachedGoConfig cachedFileGoConfig)
     {
         this.cipher = goCipher;
         this.cachedFileGoConfig = cachedFileGoConfig;

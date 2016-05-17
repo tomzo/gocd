@@ -35,7 +35,7 @@ public class GoConfigPluginService {
 
     @Autowired public GoConfigPluginService(ConfigRepoExtension configRepoExtension,
             ConfigCache configCache,ConfigElementImplementationRegistry configElementImplementationRegistry,
-            CachedFileGoConfig cachedFileGoConfig)
+            CachedGoConfig cachedFileGoConfig)
     {
         this.crExtension = configRepoExtension;
         MagicalGoConfigXmlLoader loader = new MagicalGoConfigXmlLoader(configCache, configElementImplementationRegistry);
