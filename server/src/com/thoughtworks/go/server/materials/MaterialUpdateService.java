@@ -128,8 +128,8 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
                 return;
             }
             final PostCommitHookImplementer materialTypeImplementer = materialType.getImplementer();
-            final PipelineGroups allGroups = goConfigService.currentCruiseConfig().getGroups();
-            Set<Material> allUniquePostCommitSchedulableMaterials = materialConfigConverter.toMaterials(allGroups.getAllUniquePostCommitSchedulableMaterials());
+            final CruiseConfig cruiseConfig = goConfigService.currentCruiseConfig();
+            Set<Material> allUniquePostCommitSchedulableMaterials = materialConfigConverter.toMaterials(cruiseConfig.getAllUniquePostCommitSchedulableMaterials());
             final Set<Material> prunedMaterialList = materialTypeImplementer.prune(allUniquePostCommitSchedulableMaterials, attributes);
 
             if (prunedMaterialList.isEmpty()) {
@@ -149,7 +149,7 @@ public class MaterialUpdateService implements GoMessageListener<MaterialUpdateCo
 
     public void updateMaterial(Material material) {
         Date inProgressSince = inProgress.putIfAbsent(material, new Date());
-        if (inProgressSince == null || !material.isAutoUpdate()) {
+        if (inProgressSince == null || !material.isAutoUpdate() || isConfigMaterial(material)) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(format("[Material Update] Updating material %s", material));
             }
