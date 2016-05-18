@@ -50,6 +50,8 @@ public interface CruiseConfig extends Validatable, ConfigOriginTraceable {
 
     int schemaVersion();
 
+    Set<MaterialConfig> getAllUniquePostCommitSchedulableMaterials();
+
     /**
      * Gets only elements of CruiseConfig which are defined locally.
      */
