@@ -33,6 +33,7 @@ dependencies {
   compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.47'
   compile group: 'org.eclipse.jetty.websocket', name: 'websocket-client', version: '9.2.17.v20160517'
   compile group: 'commons-configuration', name: 'commons-configuration', version: '1.10'
+  compile group: 'log4j', name: 'log4j', version: '1.2.17'
   testCompile project(path: ':common', configuration: 'testOutput')
   testCompile project(path: ':config-api', configuration: 'testOutput')
   testCompile project(':test-utils')

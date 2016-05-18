@@ -20,6 +20,7 @@ description = 'Agent Launcher Jar'
 
 dependencies {
   compile project(':agent-common')
+  compile group: 'org.graylog2', name: 'gelfj', version: '1.1.12'
   testCompile project(':test-utils')
 }
 
