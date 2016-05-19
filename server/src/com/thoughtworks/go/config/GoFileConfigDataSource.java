@@ -260,12 +260,13 @@ public class GoFileConfigDataSource {
                 if (lastValidPartials.isEmpty()) {
                     throw e;
                 } else {
-                    LOGGER.warn("Merged config update operation failed on latest partials: " + e.getMessage() + " Falling back to using last valida partials",e);
+                    LOGGER.warn("Merged config update operation failed on latest " + lastKnownPartials.size() + " partials: "
+                            + e.getMessage() + " Falling back to using last valid partials",e);
                     serverHealthService.update(ServerHealthState.error(GoPartialConfig.INVALID_CRUISE_CONFIG_MERGE, GoConfigValidity.invalid(e).errorMessage(), HealthStateType.invalidConfigMerge()));
                     String configAsXml = trySavingConfig(updatingCommand, configHolder, lastValidPartials);
                     validatedConfigHolder = internalLoad(configAsXml, getConfigUpdatingUser(updatingCommand));
                     validatedConfigHolder.configForEdit.merge(lastValidPartials,true);
-                    LOGGER.info("Update operation on merged configuration succeeded with old valid partials");
+                    LOGGER.info("Update operation on merged configuration succeeded with old " + lastValidPartials.size() + "valid partials");
                 }
             }
             ConfigSaveState configSaveState = shouldMergeConfig(updatingCommand, configHolder) ? ConfigSaveState.MERGED : ConfigSaveState.UPDATED;
@@ -303,15 +304,11 @@ public class GoFileConfigDataSource {
             }
             return getMergedConfig((NoOverwriteUpdateConfigCommand) updatingCommand, configHolder.configForEdit.getMd5(), partials);
         }
-        //TODO tomzo: may need more picky clone
-        CruiseConfig deepClone = cloner.deepClone(configHolder.configForEdit);
-        deepClone.setPartials(partials);
-        CruiseConfig updatedDeepClone = updatingCommand.update(deepClone);
-
-        LOGGER.debug("[Config Save] ==-- Done getting modified config");
-        // here we _may_ send config for edit with remote elements, which looks like horror, but these elements are removed further
-        String configAsXml = configAsXml(updatedDeepClone, false);
-        cachedGoPartials.markAsValid(deepClone.getPartials());
+        CruiseConfig deepCloneForEdit = configHolder.configForEdit.cloneForValidation();
+        deepCloneForEdit.setPartials(partials);
+        CruiseConfig config = updatingCommand.update(deepCloneForEdit);
+        String configAsXml = configAsXml(config, false);
+        cachedGoPartials.markAsValid(deepCloneForEdit.getPartials());
         return configAsXml;
     }
 
