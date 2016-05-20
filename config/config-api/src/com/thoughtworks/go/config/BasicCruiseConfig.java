@@ -93,6 +93,7 @@ public class BasicCruiseConfig implements CruiseConfig {
         if (partList.isEmpty()) {
             return;
         }
+        stripRemotes();
         MergeStrategy mergeStrategy = new MergeStrategy(partList,forEdit);
         this.strategy = mergeStrategy;
         groups = mergeStrategy.mergePipelineConfigs();
@@ -140,8 +141,6 @@ public class BasicCruiseConfig implements CruiseConfig {
 
         void stripRemotes();
 
-        List<PartialConfig> getMergedPartials();
-
         void addPipeline(String groupName, PipelineConfig pipelineConfig);
 
         void addPipelineWithoutValidation(String groupName, PipelineConfig pipelineConfig);
@@ -153,6 +152,8 @@ public class BasicCruiseConfig implements CruiseConfig {
         boolean isLocal();
 
         CruiseConfig cloneForValidation();
+
+        List<PartialConfig> getMergedPartials();
     }
 
     private class BasicStrategy implements CruiseStrategy {
@@ -182,11 +183,6 @@ public class BasicCruiseConfig implements CruiseConfig {
         @Override
         public void stripRemotes() {
             /*nth to do*/
-        }
-
-        @Override
-        public List<PartialConfig> getMergedPartials() {
-            return new ArrayList<>();
         }
 
         @Override
@@ -223,6 +219,11 @@ public class BasicCruiseConfig implements CruiseConfig {
         public CruiseConfig cloneForValidation() {
             Cloner cloner = new Cloner();
             return cloner.deepClone(BasicCruiseConfig.this);
+        }
+
+        @Override
+        public List<PartialConfig> getMergedPartials() {
+            return new ArrayList<>();
         }
     }
 
@@ -398,11 +399,6 @@ public class BasicCruiseConfig implements CruiseConfig {
         }
 
         @Override
-        public List<PartialConfig> getMergedPartials() {
-            return this.parts;
-        }
-
-        @Override
         public void stripRemotes() {
             EnvironmentsConfig localEnvironments = environments.getLocal();
             EnvironmentsConfig environmentsForSave = new EnvironmentsConfig();
@@ -447,8 +443,7 @@ public class BasicCruiseConfig implements CruiseConfig {
             // we only need groups and environments to be different
             groups = pipelineConfigsForSave;
             environments = environmentsForSave;
-            // and it should not contain partials
-            partials = new ArrayList<>();
+            // and it should contain partials
             // and this must be initialized again, we want _same_ instances in groups and in allPipelineConfigs
             allPipelineConfigs = null;
             pipelineNameToConfigMap = new ConcurrentHashMap<CaseInsensitiveString, PipelineConfig>();
@@ -519,12 +514,15 @@ public class BasicCruiseConfig implements CruiseConfig {
         public CruiseConfig cloneForValidation() {
             Cloner cloner = new Cloner();
             BasicCruiseConfig configForValidation = cloner.deepClone(BasicCruiseConfig.this);
-            // and it should not contain partials
-            configForValidation.partials = new ArrayList<>();
             // and this must be initialized again, we don't want _same_ instances in groups and in allPipelineConfigs
             configForValidation.allPipelineConfigs = null;
             configForValidation.pipelineNameToConfigMap = new ConcurrentHashMap<CaseInsensitiveString, PipelineConfig>();
             return configForValidation;
+        }
+
+        @Override
+        public List<PartialConfig> getMergedPartials() {
+            return parts;
         }
     }
 
@@ -1508,6 +1506,11 @@ public class BasicCruiseConfig implements CruiseConfig {
     }
 
     @Override
+    public List<PartialConfig> getMergedPartials() {
+        return strategy.getMergedPartials();
+    }
+
+    @Override
     public void setPartials(List<PartialConfig> partials) {
         this.partials = new Cloner().deepClone(partials);
     }
@@ -1515,11 +1518,6 @@ public class BasicCruiseConfig implements CruiseConfig {
     @Override
     public List<PartialConfig> getPartials() {
         return partials;
-    }
-
-    @Override
-    public List<PartialConfig> getMergedPartials() {
-        return strategy.getMergedPartials();
     }
 
     @Override
