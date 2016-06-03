@@ -31,6 +31,8 @@ import com.thoughtworks.go.config.materials.mercurial.HgMaterialConfig;
 import com.thoughtworks.go.config.materials.perforce.P4MaterialConfig;
 import com.thoughtworks.go.config.materials.svn.SvnMaterialConfig;
 import com.thoughtworks.go.config.materials.tfs.TfsMaterialConfig;
+import com.thoughtworks.go.config.remote.ConfigRepoConfig;
+import com.thoughtworks.go.config.remote.RepoConfigOrigin;
 import com.thoughtworks.go.domain.materials.MaterialConfig;
 import com.thoughtworks.go.helper.MaterialConfigsMother;
 import com.thoughtworks.go.helper.PipelineConfigMother;
@@ -108,16 +110,26 @@ public class PipelineGroupsTest {
     public void shouldErrorOutIfDuplicatePipelineIsAdded() {
         PipelineConfig pipeline1 = createPipelineConfig("pipeline1", "stage1");
         PipelineConfig pipeline2 = createPipelineConfig("pipeline1", "stage1");
+        PipelineConfig pipeline3 = createPipelineConfig("pipeline1", "stage1");
+        PipelineConfig pipeline4 = createPipelineConfig("pipeline1", "stage1");
+        pipeline3.setOrigin(new RepoConfigOrigin(new ConfigRepoConfig(MaterialConfigsMother.gitMaterialConfig(), "plugin"), "rev1"));
+        pipeline4.setOrigin(new RepoConfigOrigin(new ConfigRepoConfig(MaterialConfigsMother.svnMaterialConfig(), "plugin"), "1"));
         PipelineConfigs defaultGroup = createGroup("defaultGroup", pipeline1);
         PipelineConfigs anotherGroup = createGroup("anotherGroup", pipeline2);
-        PipelineGroups pipelineGroups = new PipelineGroups(defaultGroup, anotherGroup);
+        PipelineConfigs thirdGroup = createGroup("thirdGroup", pipeline3);
+        PipelineConfigs fourthGroup = createGroup("fourthGroup", pipeline4);
+        PipelineGroups pipelineGroups = new PipelineGroups(defaultGroup, anotherGroup, thirdGroup, fourthGroup);
 
         pipelineGroups.validate(null);
 
         assertThat(pipeline1.errors().isEmpty(), is(false));
-        assertThat(pipeline1.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique."));
+        assertThat(pipeline1.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [AwesomeGitMaterial at rev1, cruise-config.xml, svn-material at 1]"));
         assertThat(pipeline2.errors().isEmpty(), is(false));
-        assertThat(pipeline2.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique."));
+        assertThat(pipeline2.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [AwesomeGitMaterial at rev1, cruise-config.xml, svn-material at 1]"));
+        assertThat(pipeline3.errors().isEmpty(), is(false));
+        assertThat(pipeline3.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [AwesomeGitMaterial at rev1, cruise-config.xml, svn-material at 1]"));
+        assertThat(pipeline4.errors().isEmpty(), is(false));
+        assertThat(pipeline4.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [AwesomeGitMaterial at rev1, cruise-config.xml, svn-material at 1]"));
     }
 
     @Test
@@ -130,9 +142,9 @@ public class PipelineGroupsTest {
         pipelineGroups.validate(null);
 
         assertThat(pipeline1.errors().isEmpty(), is(false));
-        assertThat(pipeline1.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique."));
+        assertThat(pipeline1.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [cruise-config.xml]"));
         assertThat(pipeline2.errors().isEmpty(), is(false));
-        assertThat(pipeline2.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique."));
+        assertThat(pipeline2.errors().on(PipelineConfig.NAME), is("You have defined multiple pipelines named 'pipeline1'. Pipeline names must be unique. Source(s): [cruise-config.xml]"));
     }
 
     @Test
