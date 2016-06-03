@@ -77,6 +77,10 @@ public class HealthStateScope implements Comparable<HealthStateScope> {
         return new HealthStateScope(ScopeType.CONFIG_PARTIAL, repoConfig.getMaterialConfig().getFingerprint());
     }
 
+    public static HealthStateScope forPartialConfigRepo(String fingerprint) {
+        return new HealthStateScope(ScopeType.CONFIG_PARTIAL, fingerprint);
+    }
+
     public boolean isSame(String scope) {
         return StringUtils.endsWithIgnoreCase(this.scope, scope);
     }
@@ -194,6 +198,10 @@ public class HealthStateScope implements Comparable<HealthStateScope> {
             default:
                 return "";
         }
+    }
+
+    public boolean isForConfigPartial() {
+        return type == ScopeType.CONFIG_PARTIAL;
     }
 
     enum ScopeType {
