@@ -300,6 +300,8 @@ task verifyFatJar(type: VerifyJarTask) {
           "websocket-common-9.2.17.v20160517.jar",
           "websocket-server-9.2.17.v20160517.jar",
           "websocket-servlet-9.2.17.v20160517.jar",
+          "gelfj-1.1.12.jar",
+          "json-simple-1.1.jar"
       ]
   ]
 }
