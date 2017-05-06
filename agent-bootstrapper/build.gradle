@@ -20,6 +20,7 @@ description = 'GoCD Agent Bootstrapper'
 
 dependencies {
   compile project(':agent-common')
+  compile group: 'org.graylog2', name: 'gelfj', version: '1.1.12'
   compile group: 'com.apple', name: 'AppleJavaExtensions', version: '1.4'
   testCompile project(':test-utils')
 
@@ -79,6 +80,8 @@ task verifyJar(type: VerifyJarTask) {
           "commons-io-2.5.jar",
           "commons-lang-2.6.jar",
           "commons-logging-1.2.jar",
+          "gelfj-1.1.12.jar",
+          "json-simple-1.1.jar",
           "httpclient-4.5.2.jar",
           "httpcore-4.4.4.jar",
           "jcommander-1.60.jar",
