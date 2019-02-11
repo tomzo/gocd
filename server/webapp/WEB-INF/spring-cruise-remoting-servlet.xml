@@ -64,6 +64,9 @@
     <task:scheduled ref="materialUpdateService" method="onTimer"
                     initial-delay="${cruise.material.update.delay}"
                     fixed-delay="${cruise.material.update.interval}"/>
+    <task:scheduled ref="vaultRenewService" method="onTimer"
+                    initial-delay="${go.vault.renew.delay}"
+                    fixed-delay="${go.vault.renew.interval}"/>
     <task:scheduled ref="agentService" method="refresh"
                     initial-delay="10000"
                     fixed-delay="${cruise.agent.service.refresh.interval}"/>

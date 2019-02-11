@@ -941,6 +941,14 @@ public class SystemEnvironment implements Serializable, ConfigDirProvider {
         return GO_PLUGIN_CLASSLOADER_OLD.getValue();
     }
 
+    public String getVaultSslCert() {
+        return getPropertyImpl("go.vault.ssl.certfile", "/usr/local/share/ca-certificates/ait.crt");
+    }
+
+    public String getVaultAddress() {
+        return getPropertyImpl("go.vault.address", "https://vault.ai-traders.com:8200");
+    }
+
     public static abstract class GoSystemProperty<T> {
         private String propertyName;
         protected T defaultValue;
