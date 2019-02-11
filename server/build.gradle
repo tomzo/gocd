@@ -942,6 +942,7 @@ task verifyWar(type: VerifyJarTask) {
         "token-bucket-${project.versions.tokenBucket}.jar",
         "urlrewritefilter-3.2.0.jar",
         "util-${project.version}.jar",
+        "vault-java-driver-3.1.0.jar",
         "velocity-1.7.jar",
         "velocity-tools-view-${project.versions.velocityToolsView}.jar",
       ])
