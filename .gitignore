@@ -22,6 +22,8 @@
 bin/
 *.iml
 
+/ops
+
 # eclipse
 .project
 .classpath

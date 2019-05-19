@@ -1,0 +1,32 @@
+format_version: 3
+pipelines:
+  gocd:
+    group: gocd
+    label_template: ${git}
+    materials:
+      git:
+        git: git@github.com:tomzo/gocd.git
+        shallow_clone: true
+        branch: ait
+        blacklist:
+          - "*.md"
+          - "ci.gocd.yaml"
+    secure_variables:
+      VAULT_TOKEN: "AES:HvA/PQSKQRme3pSzebqU/A==:pWbVFpZOP848V+kBRePlxTmEXjT8QsczSeEtkHRWYLg="
+    stages:
+    - build:
+        clean_workspace: false
+        jobs:
+          build:
+            timeout: 180
+            elastic_profile_id: w.c4.m6144.e10
+            tasks:
+            - exec:
+                command: dojo
+                arguments:
+                - ./gradlew clean serverPackageDeb agentPackageDeb agentGenericZip serverGenericZip versionFile
+            - exec:
+                command: bash
+                arguments:
+                - -c
+                - ./tasks github_release

@@ -1,0 +1,94 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+RELEASER_VERSION="2.1.0"
+SECRET_OPS_VERSION="0.6.2"
+
+SECRET_OPS_FILE="ops/secret-ops"
+SECRET_OPS_TAR_FILE="ops/secret-ops-${SECRET_OPS_VERSION}.tar.gz"
+RELEASER_FILE="ops/releaser-${RELEASER_VERSION}"
+
+VAULT_ADDR="https://vault.kudulab.io:8200"
+
+mkdir -p ops
+if [[ ! -f $RELEASER_FILE ]];then
+  wget --quiet -O $RELEASER_FILE https://github.com/kudulab/releaser/releases/download/${RELEASER_VERSION}/releaser
+fi
+source $RELEASER_FILE
+if [[ ! -f $SECRET_OPS_TAR_FILE ]];then
+  wget --quiet -O $SECRET_OPS_TAR_FILE https://github.com/kudulab/secret-ops/releases/download/${SECRET_OPS_VERSION}/secret-ops.tar.gz
+  tar -xf $SECRET_OPS_TAR_FILE -C ops
+fi
+source $SECRET_OPS_FILE
+
+command="$1"
+case "${command}" in
+  github_release)
+    set +u
+    if [[ -z "${GITHUB_TOKEN}" ]]; then
+      echo "GITHUB_TOKEN must be set for release"
+      if [[ -n "${VAULT_TOKEN}" ]]; then
+        echo "Trying to get GITHUB_TOKEN from vault"
+        GITHUB_TOKEN=$(vault read -field=token secret/gocd/github_releases)
+        export GITHUB_TOKEN
+      else
+        exit 1
+      fi
+    fi
+    releaser::prepare_github_release_bin
+
+    VERSION=$(ls installers/target/distributions/zip/go-agent-*.zip | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+
+    SHA=$(git rev-parse HEAD)
+
+    $GHRELEASE_BIN release \
+      --user tomzo \
+      --repo gocd \
+      --tag $VERSION \
+      --name $VERSION \
+      --target $SHA \
+      --pre-release
+
+    ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+    cd ${ROOT_DIR}/installers/target/distributions/deb
+    for file in *.deb; do
+      $GHRELEASE_BIN upload \
+        --user tomzo \
+        --repo gocd \
+        --tag $VERSION \
+        --name "$file" \
+        --file "$file"
+    done
+
+    cd ${ROOT_DIR}/installers/target/distributions/zip
+    for file in *.zip; do
+      $GHRELEASE_BIN upload \
+        --user tomzo \
+        --repo gocd \
+        --tag $VERSION \
+        --name "$file" \
+        --file "$file"
+    done
+
+    cd ${ROOT_DIR}/installers/target/distributions/meta/
+    $GHRELEASE_BIN upload \
+      --user tomzo \
+      --repo gocd \
+      --tag $VERSION \
+      --name "version.json" \
+      --file "version.json"
+    ;;
+  generate_vault_token)
+    vault_token=$(vault token create -orphan -ttl=48h -policy=gocd -field token -metadata gocd_renew=true)
+    secured_token_gocd=$(secret_ops::encrypt_with_gocd_top "${vault_token}")
+    echo "Generated token: ${vault_token} and encrypted by GoCD server"
+    secret_ops::insert_vault_token_gocd_yaml "${secured_token_gocd}"
+    ;;
+  *)
+      echo "Invalid command: '${command}'"
+      exit 1
+      ;;
+esac
+set +e
